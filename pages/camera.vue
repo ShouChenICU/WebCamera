@@ -21,9 +21,11 @@ function disconnect() {
   })
   if (peerConnection) {
     closeRTCPeerConnection(peerConnection)
-    isConnecting.value = false
-    logInfo.state = 'disconnected'
   }
+  monitorId.value = ''
+  isConnecting.value = false
+  logInfo.state = 'disconnected'
+  refreshStream()
 }
 
 function doConnect() {
@@ -45,6 +47,14 @@ function doConnect() {
       if (obj.type === 'monitorId') {
         monitorId.value = obj.content
         peerConnection = new RTCPeerConnection()
+
+        // console.log(curStream.value)
+
+        // curStream.value.getTracks().forEach((t) => {
+        //   console.log(t)
+
+        //   peerConnection.addTrack(t)
+        // })
         peerConnection.onconnectionstatechange = (e) => {
           if (peerConnection.connectionState === 'connected') {
             isConnecting.value = false
@@ -60,22 +70,19 @@ function doConnect() {
             logInfo.value.state = 'failed'
           }
         }
-        curStream.value.getTracks.forEach((t) => {
-          peerConnection.addTrack(t)
-        })
-        peerConnection.onicecandidate = (e) => {
-          const candidate = e.cancelable
-          if (candidate) {
+        peerConnection.onicecandidate = async (e) => {
+          const candidate = e?.candidate
+          if (candidate?.candidate) {
             logInfo.value.logs.push({
               time: toISOStringWithTimezone(new Date()),
               type: 'info',
               content: 'Send ice candidate: ' + candidate.candidate
             })
+            await $fetch('/api/sendEvent', {
+              method: 'post',
+              body: { id: monitorId.value, type: 'candidate', content: JSON.stringify(candidate) }
+            })
           }
-          $fetch('/api/sendEvent', {
-            method: 'post',
-            body: { id: monitorId.value, type: 'candidate', content: candidate.candidate }
-          })
         }
         peerConnection.onicecandidateerror = (e) => {
           logInfo.value.logs.push({
@@ -83,6 +90,7 @@ function doConnect() {
             type: 'warn',
             content: e + ''
           })
+          console.warn(e)
         }
       }
     } else {
@@ -92,21 +100,38 @@ function doConnect() {
           type: 'info',
           content: 'Receive sdp: ' + obj.content
         })
-        peerConnection.setRemoteDescription(new RTCSessionDescription(obj.content))
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(JSON.parse(obj.content))
+        )
+
+        curStream.value.getTracks().forEach(async (t) => {
+          console.log(t)
+
+          await peerConnection.addTrack(t)
+        })
+
         const answer = await peerConnection.createAnswer()
+        await peerConnection.setLocalDescription(answer)
         logInfo.value.logs.push({
           time: toISOStringWithTimezone(new Date()),
           type: 'info',
           content: 'Send anwser: ' + answer.sdp
         })
-        $fetch('/api/sendEvent', { method: 'post', body: { type: 'sdp', content: answer.sdp } })
+        await $fetch('/api/sendEvent', {
+          method: 'post',
+          body: { id: monitorId.value, type: 'sdp', content: JSON.stringify(answer) }
+        })
       } else if (obj.type === 'candidate') {
         logInfo.value.logs.push({
           time: toISOStringWithTimezone(new Date()),
           type: 'info',
           content: 'Receive ice candidate: ' + obj.content
         })
-        peerConnection.addIceCandidate(new RTCIceCandidate(obj.content))
+        try {
+          peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(obj.content)))
+        } catch (e) {
+          console.warn('RTCIceCandidate', e, obj)
+        }
       }
     }
   })
@@ -237,7 +262,7 @@ onUnmounted(() => {
 
 <template>
   <div class="bg-neutral-50 dark:bg-black">
-    <div class="overflow-auto min-h-[90vh] md:flex md:flex-row p-4">
+    <div class="overflow-auto md:flex md:flex-row p-4">
       <div class="md:flex-1 md:p-4 space-y-4">
         <UFormGroup label="视频设备">
           <USelectMenu :options="videoDevList" v-model="curVideoDevInfo" />

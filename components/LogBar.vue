@@ -9,7 +9,7 @@ const logs = computed(() => {
 </script>
 
 <template>
-  <div class="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-color">
+  <div class="bg-white dark:bg-slate-800 border-t border-color">
     <div class="p-1 text-sm flex flex-row items-center">
       <span>{{ logInfo.state }}</span>
 
@@ -18,7 +18,7 @@ const logs = computed(() => {
       <span>12KB</span>
     </div>
 
-    <div class="max-h-[12vh] overflow-y-auto text-xs p-1">
+    <div class="max-h-[60vh] overflow-y-auto text-xs p-1">
       <p v-for="log in logs">
         <span class="text-neutral-500">{{ log.time }}</span>
         <span

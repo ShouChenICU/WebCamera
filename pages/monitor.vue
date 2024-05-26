@@ -44,6 +44,7 @@ async function doConnect() {
   logInfo.value.state = 'connecting'
 
   peerConnection = new RTCPeerConnection()
+  peerConnection.createDataChannel('demo')
   peerConnection.onconnectionstatechange = (e) => {
     if (peerConnection.connectionState === 'connected') {
       isConnecting.value = false
@@ -59,19 +60,19 @@ async function doConnect() {
       logInfo.value.state = 'failed'
     }
   }
-  peerConnection.onicecandidate = (e) => {
-    const candidate = e.cancelable
-    if (candidate) {
+  peerConnection.onicecandidate = async (e) => {
+    const candidate = e?.candidate
+    if (candidate?.candidate) {
       logInfo.value.logs.push({
         time: toISOStringWithTimezone(new Date()),
         type: 'info',
         content: 'Send ice candidate: ' + candidate.candidate
       })
+      await $fetch('/api/sendEvent', {
+        method: 'post',
+        body: { id: connectId.value, type: 'candidate', content: JSON.stringify(candidate) }
+      })
     }
-    $fetch('/api/sendEvent', {
-      method: 'post',
-      body: { id: connectId.value, type: 'candidate', content: candidate.candidate }
-    })
   }
   peerConnection.onicecandidateerror = (e) => {
     logInfo.value.logs.push({
@@ -79,33 +80,42 @@ async function doConnect() {
       type: 'warn',
       content: e + ''
     })
+    console.warn(e)
   }
   peerConnection.ontrack = (e) => {
+    console.log(e)
+
     curStream.value.addTrack(e.track)
   }
 
   const offer = await peerConnection.createOffer()
   await peerConnection.setLocalDescription(offer)
 
-  postEventSource('/api/monitor', { connectId: connectId.value, sdp: offer.sdp }, async (str) => {
-    const obj = JSON.parse(str)
+  postEventSource(
+    '/api/monitor',
+    { connectId: connectId.value, sdp: JSON.stringify(offer) },
+    async (str) => {
+      const obj = JSON.parse(str)
 
-    if (obj.type === 'sdp') {
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'info',
-        content: 'Receive sdp: ' + obj.content
-      })
-      peerConnection.setRemoteDescription(new RTCSessionDescription(obj.content))
-    } else if (obj.type === 'candidate') {
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'info',
-        content: 'Receive ice candidate: ' + obj.content
-      })
-      peerConnection.addIceCandidate(new RTCIceCandidate(obj.content))
+      if (obj.type === 'sdp') {
+        logInfo.value.logs.push({
+          time: toISOStringWithTimezone(new Date()),
+          type: 'info',
+          content: 'Receive sdp: ' + obj.content
+        })
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(JSON.parse(obj.content))
+        )
+      } else if (obj.type === 'candidate') {
+        logInfo.value.logs.push({
+          time: toISOStringWithTimezone(new Date()),
+          type: 'info',
+          content: 'Receive ice candidate: ' + obj.content
+        })
+        peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(obj.content)))
+      }
     }
-  })
+  )
     .then(() => {
       isConnecting.value = false
     })
@@ -130,7 +140,7 @@ onMounted(() => {
 
 <template>
   <div class="bg-neutral-50 dark:bg-black">
-    <div class="overflow-auto min-h-[90vh] md:flex md:flex-row p-4">
+    <div class="overflow-auto md:flex md:flex-row p-4">
       <div class="md:flex-1 md:p-4 space-y-4">
         <UFormGroup label="连接串">
           <UInput type="text" v-model="connectId" />
@@ -142,7 +152,7 @@ onMounted(() => {
       </div>
 
       <div class="md:flex-1 md:p-4 mt-8 md:mt-0">
-        <video controls autoplay muted ref="videoElm" class="w-full rounded-md"></video>
+        <video controls autoplay ref="videoElm" class="w-full rounded-md"></video>
       </div>
     </div>
 

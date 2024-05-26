@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const es = createEventStream(event)
-  sseMap.set(connectId, es)
+  sseMap.set(monitorId, es)
 
   es.onClosed(async () => {
     sseMap.delete(connectId)
