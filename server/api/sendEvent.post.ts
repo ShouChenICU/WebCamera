@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
-  console.log('event', body)
+  // console.log('event', body)
 
   const id = body.id
   const type = body.type

@@ -1,31 +1,53 @@
-<script setup>
+<script setup lang="ts">
 const videoElm = ref()
-const curStream = ref()
-const curVideoDevInfo = ref({ id: undefined })
-const curAudioDevInfo = ref({ id: undefined })
-const videoDevList = ref([])
-const audioDevList = ref([])
+const curStream = ref<MediaStream>()
+const curVideoDevInfo = ref({ id: undefined, label: undefined })
+const curAudioDevInfo = ref({ id: undefined, label: undefined })
+const videoDevList = ref<Array<any>>([])
+const audioDevList = ref<Array<any>>([])
 const isOpenAudio = ref(true)
-const logInfo = ref({ state: 'disconnected', logs: [] })
-const connectId = ref('')
+const isAutoReconnect = ref(false)
+const logInfo = ref<any>({
+  state: 'disconnected',
+  logs: [],
+  bytesReceived: 0,
+  bytesSent: 0,
+  localCandidateType: ''
+})
+const connectId = ref()
 const isShowConnectId = ref(false)
 const isConnecting = ref(false)
 const monitorId = ref('')
-let peerConnection
+let peerConnection: RTCPeerConnection | undefined
+let dataChannel: RTCDataChannel | undefined
+let stateJobId: any
 
 function disconnect() {
-  logInfo.value.logs.push({
-    time: toISOStringWithTimezone(new Date()),
-    type: 'info',
-    content: 'disconnect'
-  })
-  if (peerConnection) {
-    closeRTCPeerConnection(peerConnection)
+  if (dataChannel?.readyState === 'open') {
+    dataChannel.send(JSON.stringify({ type: 'disconnect' }))
   }
-  monitorId.value = ''
-  isConnecting.value = false
-  logInfo.state = 'disconnected'
-  refreshStream()
+  clearInterval(stateJobId)
+  setTimeout(() => {
+    logInfo.value.logs.push({
+      time: toISOStringWithTimezone(new Date()),
+      type: 'info',
+      content: 'disconnect'
+    })
+    if (peerConnection) {
+      closeRTCPeerConnection(peerConnection)
+      peerConnection = undefined
+      dataChannel = undefined
+    }
+    monitorId.value = ''
+    isConnecting.value = false
+    logInfo.value.state = 'disconnected'
+    refreshStream()
+    setTimeout(() => {
+      if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
+        doConnect()
+      }
+    }, 3000)
+  }, 100)
 }
 
 function doConnect() {
@@ -41,35 +63,74 @@ function doConnect() {
   logInfo.value.state = 'connecting'
   monitorId.value = ''
 
-  postEventSource('/api/camera', { connectId: connectId.value }, async (str) => {
+  postEventSource('/api/camera', { connectId: connectId.value }, async (str: string) => {
     const obj = JSON.parse(str)
     if (monitorId.value === '') {
       if (obj.type === 'monitorId') {
         monitorId.value = obj.content
-        peerConnection = new RTCPeerConnection()
+        peerConnection = new RTCPeerConnection({ iceServers: pubIceServers })
+        dataChannel = peerConnection.createDataChannel('dataChannel')
+        dataChannel.onmessage = async (e) => {
+          // console.log('onmessage', e)
+
+          const obj: any = JSON.parse(e.data)
+          if (obj.type === 'anwser') {
+            await peerConnection?.setRemoteDescription(
+              new RTCSessionDescription(JSON.parse(obj.content))
+            )
+          } else if (obj.type === 'disconnect') {
+            disconnect()
+          }
+        }
 
         // console.log(curStream.value)
 
-        // curStream.value.getTracks().forEach((t) => {
-        //   console.log(t)
-
-        //   peerConnection.addTrack(t)
-        // })
-        peerConnection.onconnectionstatechange = (e) => {
-          if (peerConnection.connectionState === 'connected') {
-            isConnecting.value = false
-            logInfo.value.state = 'connected'
-          } else if (peerConnection.connectionState === 'disconnected') {
-            isConnecting.value = false
-            logInfo.value.state = 'disconnected'
-          } else if (peerConnection.connectionState === 'closed') {
-            isConnecting.value = false
-            logInfo.value.state = 'closed'
-          } else if (peerConnection.connectionState === 'failed') {
-            isConnecting.value = false
-            logInfo.value.state = 'failed'
+        curStream.value?.getTracks().forEach((t) => {
+          // console.log(t)
+          peerConnection?.addTrack(t)
+        })
+        peerConnection.onnegotiationneeded = async (e) => {
+          // console.log('onnegotiationneeded', e)
+          logInfo.value.logs.push({
+            time: toISOStringWithTimezone(new Date()),
+            type: 'info',
+            content: 'Negotiation SDP'
+          })
+          if (dataChannel?.readyState === 'open') {
+            const offer = await peerConnection?.createOffer()
+            await peerConnection?.setLocalDescription(offer)
+            dataChannel?.send(JSON.stringify({ type: 'offer', content: JSON.stringify(offer) }))
           }
         }
+        peerConnection.onconnectionstatechange = (e) => {
+          if (peerConnection?.connectionState === 'connected') {
+            isConnecting.value = false
+            logInfo.value.state = 'connected'
+            stateJobId = setInterval(async () => {
+              const states = await peerConnection?.getStats()
+              states?.forEach(async (s) => {
+                // console.log(s)
+                if (s.type === 'candidate-pair' && s?.nominated) {
+                  logInfo.value.bytesSent = s?.bytesSent
+                  logInfo.value.bytesReceived = s?.bytesReceived
+                  const localCandidate = states.get(s.localCandidateId)
+                  const localCandidateType = localCandidate?.candidateType
+                  logInfo.value.localCandidateType = localCandidateType
+                }
+              })
+            }, 1000)
+
+            // console.log(peerConnection)
+
+            localStorage.setItem('connectId', connectId.value)
+          } else if (
+            ['disconnected', 'closed', 'failed'].includes(peerConnection?.connectionState + '')
+          ) {
+            isConnecting.value = false
+            disconnect()
+          }
+        }
+        peerConnection.oniceconnectionstatechange = (e) => {}
         peerConnection.onicecandidate = async (e) => {
           const candidate = e?.candidate
           if (candidate?.candidate) {
@@ -85,13 +146,20 @@ function doConnect() {
           }
         }
         peerConnection.onicecandidateerror = (e) => {
-          logInfo.value.logs.push({
-            time: toISOStringWithTimezone(new Date()),
-            type: 'warn',
-            content: e + ''
-          })
+          // logInfo.value.logs.push({
+          //   time: toISOStringWithTimezone(new Date()),
+          //   type: 'warn',
+          //   content: e + ''
+          // })
           console.warn(e)
         }
+
+        const offer = await peerConnection.createOffer()
+        await peerConnection.setLocalDescription(offer)
+        await $fetch('/api/sendEvent', {
+          method: 'post',
+          body: { id: monitorId.value, type: 'sdp', content: JSON.stringify(offer) }
+        })
       }
     } else {
       if (obj.type === 'sdp') {
@@ -100,27 +168,9 @@ function doConnect() {
           type: 'info',
           content: 'Receive sdp: ' + obj.content
         })
-        await peerConnection.setRemoteDescription(
+        await peerConnection?.setRemoteDescription(
           new RTCSessionDescription(JSON.parse(obj.content))
         )
-
-        curStream.value.getTracks().forEach(async (t) => {
-          console.log(t)
-
-          await peerConnection.addTrack(t)
-        })
-
-        const answer = await peerConnection.createAnswer()
-        await peerConnection.setLocalDescription(answer)
-        logInfo.value.logs.push({
-          time: toISOStringWithTimezone(new Date()),
-          type: 'info',
-          content: 'Send anwser: ' + answer.sdp
-        })
-        await $fetch('/api/sendEvent', {
-          method: 'post',
-          body: { id: monitorId.value, type: 'sdp', content: JSON.stringify(answer) }
-        })
       } else if (obj.type === 'candidate') {
         logInfo.value.logs.push({
           time: toISOStringWithTimezone(new Date()),
@@ -128,7 +178,7 @@ function doConnect() {
           content: 'Receive ice candidate: ' + obj.content
         })
         try {
-          peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(obj.content)))
+          peerConnection?.addIceCandidate(new RTCIceCandidate(JSON.parse(obj.content)))
         } catch (e) {
           console.warn('RTCIceCandidate', e, obj)
         }
@@ -139,6 +189,7 @@ function doConnect() {
       isConnecting.value = false
     })
     .catch((e) => {
+      console.warn(e)
       logInfo.value.logs.push({
         time: toISOStringWithTimezone(new Date()),
         type: 'warn',
@@ -156,6 +207,11 @@ function closeStream() {
 }
 
 async function refreshStream() {
+  if (peerConnection && peerConnection.connectionState === 'connected') {
+    peerConnection.getSenders().forEach((sender) => {
+      peerConnection?.removeTrack(sender)
+    })
+  }
   closeStream()
   try {
     curStream.value = await navigator?.mediaDevices?.getUserMedia({
@@ -196,6 +252,9 @@ async function refreshStream() {
     })
     return false
   }
+  if (peerConnection && peerConnection.connectionState === 'connected') {
+    curStream.value.getTracks().forEach((t) => peerConnection?.addTrack(t))
+  }
   return true
 }
 
@@ -218,7 +277,7 @@ onMounted(async () => {
     return
   }
   const devs = await navigator?.mediaDevices?.enumerateDevices()
-  const devInfoMap = {}
+  const devInfoMap: any = {}
   for (const dev of devs) {
     const devInfo = { id: dev.deviceId, label: dev.label }
     devInfoMap[dev.deviceId] = devInfo
@@ -228,18 +287,18 @@ onMounted(async () => {
       audioDevList.value.push(devInfo)
     }
   }
-  const videoTracks = curStream.value.getVideoTracks()
+  const videoTracks = curStream.value?.getVideoTracks()
   //   console.log(videoTracks)
-  if (videoTracks.length > 0) {
+  if (videoTracks && videoTracks.length > 0) {
     const vt = videoTracks[0]
     const setting = vt.getSettings()
-    curVideoDevInfo.value = devInfoMap[setting.deviceId]
+    curVideoDevInfo.value = devInfoMap[setting.deviceId + '']
   }
-  const audioTracks = curStream.value.getAudioTracks()
-  if (audioTracks.length > 0) {
+  const audioTracks = curStream.value?.getAudioTracks()
+  if (audioTracks && audioTracks.length > 0) {
     const at = audioTracks[0]
     const setting = at.getSettings()
-    curAudioDevInfo.value = devInfoMap[setting.deviceId]
+    curAudioDevInfo.value = devInfoMap[setting.deviceId + '']
   }
   localStorage.setItem('videoDev', JSON.stringify(curVideoDevInfo.value))
   localStorage.setItem('audioDev', JSON.stringify(curAudioDevInfo.value))
@@ -253,6 +312,28 @@ onMounted(async () => {
     connectId.value = genRandomString(16)
     localStorage.setItem('connectId', connectId.value)
   }
+
+  const tmp = localStorage.getItem('isAutoReconnect')
+  if (tmp === 'true') {
+    isAutoReconnect.value = true
+    setTimeout(() => {
+      if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
+        doConnect()
+      }
+    }, 1000)
+  } else {
+    isAutoReconnect.value = false
+  }
+  watch(isAutoReconnect, (val) => {
+    localStorage.setItem('isAutoReconnect', val + '')
+    if (val) {
+      setTimeout(() => {
+        if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
+          doConnect()
+        }
+      }, 1000)
+    }
+  })
 })
 
 onUnmounted(() => {
@@ -262,7 +343,7 @@ onUnmounted(() => {
 
 <template>
   <div class="bg-neutral-50 dark:bg-black">
-    <div class="overflow-auto md:flex md:flex-row p-4">
+    <div class="overflow-y-auto md:flex md:flex-row p-4">
       <div class="md:flex-1 md:p-4 space-y-4">
         <UFormGroup label="视频设备">
           <USelectMenu :options="videoDevList" v-model="curVideoDevInfo" />
@@ -300,7 +381,36 @@ onUnmounted(() => {
         </UFormGroup>
 
         <div>
-          <UButton block variant="outline" size="lg" class="mt-8" @click="doConnect">连接</UButton>
+          <UButton
+            block
+            variant="outline"
+            size="lg"
+            class="mt-8"
+            @click="doConnect"
+            v-show="logInfo.state !== 'connected'"
+            :loading="isConnecting"
+            ><template #leading
+              ><Icon name="solar:link-round-angle-bold" v-if="!isConnecting" /></template
+            >连接</UButton
+          >
+          <UButton
+            block
+            variant="outline"
+            size="lg"
+            color="rose"
+            class="mt-8"
+            @click="disconnect"
+            v-show="logInfo.state === 'connected'"
+            ><template #leading
+              ><Icon name="solar:link-broken-minimalistic-bold" v-if="!isConnecting" /></template
+            >断开连接</UButton
+          >
+        </div>
+        <div class="flex flex-row items-center justify-end gap-4 text-sm">
+          <label class="contents">
+            <span>自动连接</span>
+            <UToggle v-model="isAutoReconnect" />
+          </label>
         </div>
       </div>
       <div class="md:flex-1 md:p-4 mt-8 md:mt-0">

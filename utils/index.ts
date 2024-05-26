@@ -105,3 +105,20 @@ export function closeRTCPeerConnection(peerConnection: RTCPeerConnection): void 
   peerConnection.close()
   //   console.log('RTCPeerConnection closed')
 }
+
+/**
+ * 将字节格式化为人类友好的文本
+ *
+ * @param bytes 字节数量
+ * @param decimals 显示的小数位数
+ *
+ * @return 格式化后的字符串
+ */
+export function humanFileSize(bytes: number, decimals = 2) {
+  if (!bytes) return '0 B'
+  var k = 1024
+  var dm = decimals || 2
+  var sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  var i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+}

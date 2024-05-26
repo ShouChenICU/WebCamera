@@ -15,7 +15,9 @@ const logs = computed(() => {
 
       <div class="flex-1"></div>
 
-      <span>12KB</span>
+      <span>{{ logInfo.localCandidateType }}</span>
+      <span class="ml-2">TX: {{ humanFileSize(logInfo.bytesSent) }}</span>
+      <span class="ml-2">RX: {{ humanFileSize(logInfo.bytesReceived) }}</span>
     </div>
 
     <div class="max-h-[60vh] overflow-y-auto text-xs p-1">

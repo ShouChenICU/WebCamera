@@ -3,12 +3,12 @@ import { genRandomString } from '~/utils'
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
-  console.log(body)
+  // console.log(body)
 
   const connectId = body?.connectId
-  const sdp = body?.sdp
+  //   const sdp = body?.sdp
 
-  if (!connectId || !sdp) {
+  if (!connectId) {
     throw createError({ statusCode: 400, statusText: 'Bad Request' })
   }
 
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   })
 
   await cameraEs.push(JSON.stringify({ type: 'monitorId', content: monitorId }))
-  await cameraEs.push(JSON.stringify({ type: 'sdp', content: sdp }))
+  //   await cameraEs.push(JSON.stringify({ type: 'sdp', content: sdp }))
 
   return es.send()
 })
