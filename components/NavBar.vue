@@ -22,7 +22,7 @@ function switchI18n() {
 
 <template>
   <nav
-    class="sticky top-0 right-0 left-0 flex flex-row items-center px-4 md:px-6 py-3 shadow bg-white/80 dark:bg-slate-900/80 backdrop-blur"
+    class="sticky top-0 right-0 left-0 flex flex-row items-center px-4 md:px-6 py-3 shadow bg-white/80 dark:bg-slate-900/80 backdrop-blur z-50"
   >
     <NuxtLink :to="locatePath('/')">WebCamera</NuxtLink>
 
