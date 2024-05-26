@@ -10,6 +10,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@isaacs/ttlcache": "^1.4.1",
     "@nuxt/ui": "^2.16.0",
     "@nuxtjs/i18n": "^8.3.1",
     "@nuxtjs/seo": "^2.0.0-rc.10",

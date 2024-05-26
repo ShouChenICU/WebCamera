@@ -1,0 +1,107 @@
+export function genRandomString(length: number): string {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let randomString = ''
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length)
+    randomString += charset.charAt(randomIndex)
+  }
+  return randomString
+}
+
+export function postEventSource(url: string, data: any, eventHandler: Function) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+    .then((response) => {
+      if (!response.ok) {
+        if (response.statusText) {
+          throw Error(response.statusText)
+        }
+        throw new Error('Network response was not ok')
+      }
+      const contentType = response.headers.get('Content-Type')
+      if (!contentType || !contentType.includes('text/event-stream')) {
+        throw new Error('Expected text/event-stream content type')
+      }
+      if (response.body !== null) {
+        return response.body.getReader()
+      } else {
+        throw new Error('Response body is null')
+      }
+    })
+    .then((reader) => {
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      async function processText(text: string) {
+        buffer += text
+        let newlineIndex
+        while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, newlineIndex).trim()
+          buffer = buffer.slice(newlineIndex + 1)
+
+          if (line.startsWith('data:')) {
+            const eventData = line.slice(5).trim()
+            // const parsedData = JSON.parse(eventData)
+            await eventHandler(eventData)
+          }
+        }
+      }
+      async function read() {
+        const { done, value } = await reader.read()
+        if (done) {
+          // console.log('Stream complete')
+          return
+        }
+        const chunk = decoder.decode(value, { stream: true })
+        await processText(chunk)
+        return read()
+      }
+      return read()
+    })
+}
+
+export function closeRTCPeerConnection(peerConnection: RTCPeerConnection): void {
+  if (!peerConnection) {
+    console.error('Invalid RTCPeerConnection object')
+    return
+  }
+
+  // 停止发送的媒体轨道
+  peerConnection.getSenders().forEach((sender) => {
+    if (sender.track) {
+      sender.track.stop()
+    }
+  })
+
+  // 停止接收的媒体轨道
+  peerConnection.getReceivers().forEach((receiver) => {
+    if (receiver.track) {
+      receiver.track.stop()
+    }
+  })
+
+  // 关闭所有的数据通道
+  if ((peerConnection as any).dataChannels) {
+    ;(peerConnection as any).dataChannels.forEach((channel: RTCDataChannel) => {
+      channel.close()
+    })
+  }
+
+  // 移除所有的事件监听器
+  peerConnection.onicecandidate = null
+  peerConnection.ontrack = null
+  peerConnection.ondatachannel = null
+  peerConnection.oniceconnectionstatechange = null
+  peerConnection.onsignalingstatechange = null
+  peerConnection.onicegatheringstatechange = null
+  peerConnection.onnegotiationneeded = null
+
+  // 关闭 RTCPeerConnection
+  peerConnection.close()
+  //   console.log('RTCPeerConnection closed')
+}

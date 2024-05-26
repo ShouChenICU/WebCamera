@@ -10,8 +10,12 @@ const logs = computed(() => {
 
 <template>
   <div class="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-color">
-    <div class="p-1 text-sm">
+    <div class="p-1 text-sm flex flex-row items-center">
       <span>{{ logInfo.state }}</span>
+
+      <div class="flex-1"></div>
+
+      <span>12KB</span>
     </div>
 
     <div class="max-h-[12vh] overflow-y-auto text-xs p-1">
