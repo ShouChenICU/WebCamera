@@ -48,10 +48,10 @@ export default defineNuxtConfig({
     classPrefix: '',
     classSuffix: '',
     storageKey: 'nuxt-color-mode'
-  },
-
-  pwa: {
-    strategies: 'injectManifest',
-    registerType: 'autoUpdate'
   }
+
+  // pwa: {
+  //   strategies: 'injectManifest',
+  //   registerType: 'autoUpdate'
+  // }
 })

@@ -15,7 +15,8 @@ const logs = computed(() => {
 
       <div class="flex-1"></div>
 
-      <span>{{ logInfo.localCandidateType }}</span>
+      <span>local: {{ logInfo.localCandidateType }}</span>
+      <span class="ml-2">remote: {{ logInfo.remoteCandidateType }}</span>
       <span class="ml-2">TX: {{ humanFileSize(logInfo.bytesSent) }}</span>
       <span class="ml-2">RX: {{ humanFileSize(logInfo.bytesReceived) }}</span>
     </div>

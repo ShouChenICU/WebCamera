@@ -12,7 +12,8 @@ const logInfo = ref<any>({
   logs: [],
   bytesReceived: 0,
   bytesSent: 0,
-  localCandidateType: ''
+  localCandidateType: '',
+  remoteCandidateType: ''
 })
 const connectId = ref()
 const isShowConnectId = ref(false)
@@ -21,6 +22,14 @@ const monitorId = ref('')
 let peerConnection: RTCPeerConnection | undefined
 let dataChannel: RTCDataChannel | undefined
 let stateJobId: any
+
+function tryReconnnect() {
+  setTimeout(() => {
+    if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
+      doConnect()
+    }
+  }, 3000)
+}
 
 function disconnect() {
   if (dataChannel?.readyState === 'open') {
@@ -42,11 +51,7 @@ function disconnect() {
     isConnecting.value = false
     logInfo.value.state = 'disconnected'
     refreshStream()
-    setTimeout(() => {
-      if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
-        doConnect()
-      }
-    }, 3000)
+    tryReconnnect()
   }, 100)
 }
 
@@ -116,6 +121,9 @@ function doConnect() {
                   const localCandidate = states.get(s.localCandidateId)
                   const localCandidateType = localCandidate?.candidateType
                   logInfo.value.localCandidateType = localCandidateType
+                  const remoteCandidate = states.get(s.remoteCandidateId)
+                  const remoteCandidateType = remoteCandidate?.candidateType
+                  logInfo.value.remoteCandidateType = remoteCandidateType
                 }
               })
             }, 1000)
@@ -187,6 +195,7 @@ function doConnect() {
   })
     .then(() => {
       isConnecting.value = false
+      tryReconnnect()
     })
     .catch((e) => {
       console.warn(e)
@@ -316,22 +325,14 @@ onMounted(async () => {
   const tmp = localStorage.getItem('isAutoReconnect')
   if (tmp === 'true') {
     isAutoReconnect.value = true
-    setTimeout(() => {
-      if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
-        doConnect()
-      }
-    }, 1000)
+    tryReconnnect()
   } else {
     isAutoReconnect.value = false
   }
   watch(isAutoReconnect, (val) => {
     localStorage.setItem('isAutoReconnect', val + '')
     if (val) {
-      setTimeout(() => {
-        if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
-          doConnect()
-        }
-      }, 1000)
+      tryReconnnect()
     }
   })
 })

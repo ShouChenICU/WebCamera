@@ -6,7 +6,8 @@ const logInfo = ref<any>({
   logs: [],
   bytesReceived: 0,
   bytesSent: 0,
-  localCandidateType: ''
+  localCandidateType: '',
+  remoteCandidateType: ''
 })
 const isShowConnectId = ref(false)
 const connectId = ref()
@@ -98,6 +99,9 @@ async function doConnect() {
             const localCandidate = states.get(s.localCandidateId)
             const localCandidateType = localCandidate?.candidateType
             logInfo.value.localCandidateType = localCandidateType
+            const remoteCandidate = states.get(s.remoteCandidateId)
+            const remoteCandidateType = remoteCandidate?.candidateType
+            logInfo.value.remoteCandidateType = remoteCandidateType
           }
         })
       }, 1000)
