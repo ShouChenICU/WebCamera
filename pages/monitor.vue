@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { RTCNode } from '#imports'
+import { SSE } from 'sse.js'
+
 const curStream = ref<MediaStream>()
 const videoElm = ref()
 const logInfo = ref<any>({
@@ -10,10 +13,11 @@ const logInfo = ref<any>({
   remoteCandidateType: ''
 })
 const isShowConnectId = ref(false)
-const connectId = ref()
+const cameraId = ref()
+const monitorId = ref('')
 const isConnecting = ref(false)
-let peerConnection: RTCPeerConnection | undefined
-let dataChannel: RTCDataChannel | undefined
+const sse = shallowRef<SSE>()
+const rtcNode = shallowRef<RTCNode>()
 let stateJobId: any
 
 function closeStream() {
@@ -25,173 +29,164 @@ function closeStream() {
 }
 
 function disconnect() {
-  if (dataChannel?.readyState === 'open') {
-    dataChannel.send(JSON.stringify({ type: 'disconnect' }))
-  }
   clearInterval(stateJobId)
-  setTimeout(() => {
+  logInfo.value.logs.push({
+    time: toISOStringWithTimezone(new Date()),
+    type: 'info',
+    content: 'Disconnect'
+  })
+  isConnecting.value = false
+  logInfo.value.state = 'disconnected'
+  rtcNode.value?.dispose()
+  sse.value?.close()
+  closeStream()
+}
+
+function connectSignServer() {
+  if (!sse.value || sse.value.readyState !== SSE.OPEN) {
     logInfo.value.logs.push({
       time: toISOStringWithTimezone(new Date()),
       type: 'info',
-      content: 'disconnect'
+      content: 'Connecting sign server'
     })
-    if (peerConnection) {
-      closeRTCPeerConnection(peerConnection)
-      peerConnection = undefined
-      dataChannel = undefined
+    sse.value = new SSE('/api/monitor', {
+      method: 'post',
+      headers: { 'Content-Type': 'application/json' },
+      payload: JSON.stringify({ monitorId: monitorId.value }),
+      start: false
+    })
+    sse.value.onopen = () => {
+      logInfo.value.logs.push({
+        time: toISOStringWithTimezone(new Date()),
+        type: 'info',
+        content: 'Sign server connected'
+      })
+      if (!rtcNode.value || !rtcNode.value.isConnected()) {
+        $fetch('/api/sendEvent', {
+          method: 'post',
+          body: { id: cameraId.value, type: 'monitorId', content: monitorId.value }
+        }).catch((e) => {
+          console.error(e)
+          logInfo.value.logs.push({
+            time: toISOStringWithTimezone(new Date()),
+            type: 'warn',
+            content: 'Camera not found'
+          })
+          disconnect()
+        })
+      }
     }
-    isConnecting.value = false
-    logInfo.value.state = 'disconnected'
-    closeStream()
-  }, 100)
+    sse.value.onerror = (e) => {
+      console.warn(e)
+    }
+    sse.value.onreadystatechange = (e) => {
+      if (e.readyState === 2) {
+        logInfo.value.logs.push({
+          time: toISOStringWithTimezone(new Date()),
+          type: 'warn',
+          content: 'Sign server disconnected'
+        })
+        setTimeout(() => {
+          if (rtcNode.value?.isConnected()) {
+            connectSignServer()
+          }
+        }, 10)
+      }
+    }
+  }
+  sse.value.onmessage = (e) => {
+    const obj = JSON.parse(e.data)
+    // console.log(obj)
+
+    if (obj?.type === 'sdp') {
+      logInfo.value.logs.push({
+        time: toISOStringWithTimezone(new Date()),
+        type: 'info',
+        content: 'Receive SDP type: ' + obj.content?.type
+      })
+      rtcNode.value?.setRemoteSDP(obj.content)
+      if (!videoElm.value.paused) {
+        videoElm.value.pause()
+        setTimeout(() => {
+          videoElm.value.play()
+        }, 100)
+      }
+    } else if (obj?.type === 'candidate') {
+      logInfo.value.logs.push({
+        time: toISOStringWithTimezone(new Date()),
+        type: 'info',
+        content: 'Receive candidate: ' + JSON.stringify(obj.content)
+      })
+      rtcNode.value?.addICECandidate(obj.content)
+    }
+  }
+  sse.value?.stream()
 }
 
-async function doConnect() {
-  if (isConnecting.value || !connectId.value.trim()) {
+function doConnect() {
+  if (isConnecting.value || !cameraId.value.trim()) {
     return
   }
   logInfo.value.logs.push({
     time: toISOStringWithTimezone(new Date()),
     type: 'info',
-    content: 'doConnect'
+    content: 'Do connecting...'
   })
   closeStream()
-  curStream.value = new MediaStream()
-  videoElm.value.srcObject = curStream.value
+  videoElm.value.srcObject = undefined
   isConnecting.value = true
   logInfo.value.state = 'connecting'
 
-  peerConnection = new RTCPeerConnection({ iceServers: pubIceServers })
-  //   peerConnection.createDataChannel('demo')
-  // peerConnection.onnegotiationneeded = (e) => {
-  //   console.log('onnegotiationneeded', e)
-  // }
-  peerConnection.ondatachannel = (e) => {
-    dataChannel = e.channel
-    dataChannel.onmessage = async (e) => {
-      // console.log('onmessage', e)
-      const obj: any = JSON.stringify(e.data)
-      if (obj.type === 'offer') {
-        await peerConnection?.setRemoteDescription(
-          new RTCSessionDescription(JSON.parse(obj.content))
-        )
-        const anwser = await peerConnection?.createAnswer()
-        await peerConnection?.setLocalDescription(anwser)
-        // 这里发不回去的
-        dataChannel?.send(JSON.stringify({ type: 'anwser', content: JSON.stringify(anwser) }))
-      } else if (obj.type === 'disconnect') {
-        disconnect()
-      }
-    }
+  if (rtcNode) {
+    rtcNode.value?.dispose()
   }
-  peerConnection.onconnectionstatechange = (e) => {
-    if (peerConnection?.connectionState === 'connected') {
-      isConnecting.value = false
-      logInfo.value.state = 'connected'
-      stateJobId = setInterval(async () => {
-        const states = await peerConnection?.getStats()
-        states?.forEach(async (s) => {
-          // console.log(s)
-          if (s.type === 'candidate-pair' && s?.nominated) {
-            // console.log(s);
-            logInfo.value.bytesSent = s?.bytesSent
-            logInfo.value.bytesReceived = s?.bytesReceived
-            const localCandidate = states.get(s.localCandidateId)
-            const localCandidateType = localCandidate?.candidateType
-            logInfo.value.localCandidateType = localCandidateType
-            const remoteCandidate = states.get(s.remoteCandidateId)
-            const remoteCandidateType = remoteCandidate?.candidateType
-            logInfo.value.remoteCandidateType = remoteCandidateType
-          }
-        })
-      }, 1000)
-
-      // console.log(peerConnection)
-
-      localStorage.setItem('connectId', connectId.value)
-    } else if (
-      ['disconnected', 'closed', 'failed'].includes(peerConnection?.connectionState + '')
-    ) {
-      isConnecting.value = false
-      disconnect()
-    }
+  rtcNode.value = new RTCNode()
+  rtcNode.value.onConnected = () => {
+    isConnecting.value = false
+    logInfo.value.state = 'connected'
+    videoElm.value.srcObject = curStream.value
+    stateJobId = setInterval(async () => {
+      const info = await rtcNode.value?.getInfo()
+      logInfo.value.bytesSent = info?.bytesSent
+      logInfo.value.bytesReceived = info?.bytesReceived
+      logInfo.value.localCandidateType = info?.localCandidateType
+      logInfo.value.remoteCandidateType = info?.remoteCandidateType
+    }, 1000)
+    logInfo.value.logs.push({
+      time: toISOStringWithTimezone(new Date()),
+      type: 'info',
+      content: 'Connected'
+    })
   }
-  peerConnection.onicecandidate = async (e) => {
-    const candidate = e?.candidate
-    if (candidate?.candidate) {
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'info',
-        content: 'Send ice candidate: ' + candidate.candidate
-      })
-      await $fetch('/api/sendEvent', {
-        method: 'post',
-        body: { id: connectId.value, type: 'candidate', content: JSON.stringify(candidate) }
-      })
-    }
-  }
-  peerConnection.onicecandidateerror = (e) => {
-    // logInfo.value.logs.push({
-    //   time: toISOStringWithTimezone(new Date()),
-    //   type: 'warn',
-    //   content: e + ''
-    // })
+  rtcNode.value.onDispose = disconnect
+  rtcNode.value.onError = (e) => {
     console.warn(e)
   }
-  peerConnection.ontrack = (e) => {
-    // console.log(e)
-    curStream.value?.addTrack(e.track)
+  rtcNode.value.onSDP = (sdp) => {
+    logInfo.value.logs.push({
+      time: toISOStringWithTimezone(new Date()),
+      type: 'info',
+      content: 'Send SDP, type: ' + sdp.type
+    })
+    $fetch('/api/sendEvent', {
+      method: 'post',
+      body: { id: cameraId.value, type: 'sdp', content: sdp }
+    })
   }
-
-  //   const offer = await peerConnection.createOffer()
-  //   await peerConnection.setLocalDescription(offer)
-
-  postEventSource('/api/monitor', { connectId: connectId.value }, async (str: string) => {
-    if (!peerConnection) {
-      throw new Error('RTCPeerConnection is undefined')
-    }
-    const obj = JSON.parse(str)
-
-    if (obj.type === 'sdp') {
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'info',
-        content: 'Receive sdp: ' + obj.content
-      })
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(obj.content)))
-
-      const answer = await peerConnection.createAnswer()
-      await peerConnection.setLocalDescription(answer)
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'info',
-        content: 'Send anwser: ' + answer.sdp
-      })
-      await $fetch('/api/sendEvent', {
-        method: 'post',
-        body: { id: connectId.value, type: 'sdp', content: JSON.stringify(answer) }
-      })
-    } else if (obj.type === 'candidate') {
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'info',
-        content: 'Receive ice candidate: ' + obj.content
-      })
-      peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(obj.content)))
-    }
-  })
-    .then(() => {
-      isConnecting.value = false
+  rtcNode.value.onICECandidate = (candidate) => {
+    logInfo.value.logs.push({
+      time: toISOStringWithTimezone(new Date()),
+      type: 'info',
+      content: 'Send candidate: ' + JSON.stringify(candidate)
     })
-    .catch((e) => {
-      console.warn(e)
-      logInfo.value.logs.push({
-        time: toISOStringWithTimezone(new Date()),
-        type: 'warn',
-        content: e + ''
-      })
-      disconnect()
+    $fetch('/api/sendEvent', {
+      method: 'post',
+      body: { id: cameraId.value, type: 'candidate', content: candidate }
     })
+  }
+  curStream.value = rtcNode.value.getMediaStream()
+
+  connectSignServer()
 }
 
 onMounted(() => {
@@ -200,10 +195,15 @@ onMounted(() => {
     type: 'info',
     content: 'Monitor'
   })
-  connectId.value = localStorage.getItem('connectId')
-  if (!connectId.value) {
-    connectId.value = ''
+  monitorId.value = genRandomString(16)
+  cameraId.value = localStorage.getItem('connectId')
+  if (!cameraId.value) {
+    cameraId.value = ''
   }
+})
+
+onUnmounted(() => {
+  disconnect()
 })
 </script>
 
@@ -214,7 +214,7 @@ onMounted(() => {
         <UFormGroup label="连接串">
           <UInput
             :type="isShowConnectId ? 'text' : 'password'"
-            v-model="connectId"
+            v-model="cameraId"
             :ui="{ icon: { trailing: { pointer: '' } } }"
           >
             <template #trailing>

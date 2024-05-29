@@ -16,8 +16,10 @@
     "@nuxtjs/seo": "^2.0.0-rc.10",
     "@vite-pwa/nuxt": "^0.7.0",
     "nuxt": "^3.11.2",
+    "sse.js": "^2.4.1",
     "vue": "^3.4.27",
-    "vue-router": "^4.3.2"
+    "vue-router": "^4.3.2",
+    "webrtc-adapter": "^9.0.1"
   },
   "devDependencies": {
     "prettier": "^3.2.5"
