@@ -28,9 +28,10 @@ let stateJobId: any
 
 function tryReconnnect() {
   setTimeout(() => {
-    if (isAutoReconnect.value && !isConnecting.value && logInfo.value.state !== 'connected') {
-      doConnect()
+    if (!isAutoReconnect.value || isConnecting.value || rtcNode.value?.isConnected()) {
+      return
     }
+    doConnect()
   }, 3000)
 }
 
@@ -124,6 +125,7 @@ function doConnect() {
   if (isConnecting.value || !cameraId.value.trim()) {
     return
   }
+  localStorage.setItem('cameraId', cameraId.value)
   logInfo.value.logs.push({
     time: toISOStringWithTimezone(new Date()),
     type: 'info',
@@ -151,7 +153,6 @@ function doConnect() {
       type: 'info',
       content: 'Connected'
     })
-    localStorage.setItem('cameraId', cameraId.value)
   }
   rtcNode.value.onDispose = disconnect
   rtcNode.value.onError = (e) => {
@@ -315,7 +316,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  disconnect()
+  rtcNode.value?.dispose()
+  sse.value?.close()
+  closeStream()
 })
 </script>
 

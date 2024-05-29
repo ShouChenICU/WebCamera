@@ -127,6 +127,7 @@ function doConnect() {
   if (isConnecting.value || !cameraId.value.trim()) {
     return
   }
+  localStorage.setItem('connectId', cameraId.value)
   logInfo.value.logs.push({
     time: toISOStringWithTimezone(new Date()),
     type: 'info',
