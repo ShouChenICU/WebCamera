@@ -48,10 +48,34 @@ export default defineNuxtConfig({
     classPrefix: '',
     classSuffix: '',
     storageKey: 'nuxt-color-mode'
-  }
+  },
 
-  // pwa: {
-  //   strategies: 'injectManifest',
-  //   registerType: 'autoUpdate'
-  // }
+  pwa: {
+    strategies: 'generateSW',
+    registerType: 'autoUpdate',
+
+    workbox: {
+      runtimeCaching: [
+        {
+          urlPattern: () => true,
+          handler: 'NetworkOnly'
+        }
+      ]
+    },
+
+    manifest: {
+      name: 'Web Camera',
+      short_name: 'WebCamera',
+      theme_color: '#ffffff',
+
+      icons: [
+        {
+          src: '/favicon.webp',
+          sizes: '512x512',
+          type: 'image/webp',
+          purpose: 'any'
+        }
+      ]
+    }
+  }
 })

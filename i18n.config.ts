@@ -3,7 +3,8 @@ export default defineI18nConfig(() => ({
   locale: 'zh',
   messages: {
     en: {
-      welcome: 'Welcome',
+      welcome:
+        'WebRTC-powered Peer-to-Peer webcam surveillance application for real-time monitoring platform.',
       home: 'Home',
       about: 'About',
       login: 'Login',
@@ -30,7 +31,10 @@ export default defineI18nConfig(() => ({
         summaryResult: 'Summary results',
         wordCount: 'Word-count',
         audioFile: 'Audio file',
-        webRec: 'Web recording'
+        webRec: 'Web recording',
+        connectionID: 'Connection ID',
+        audioDev: 'Audio device',
+        videoDev: 'Video device'
       },
       btn: {
         myFav: 'My Favorites',
@@ -53,12 +57,24 @@ export default defineI18nConfig(() => ({
         stopRec: 'Stop recording',
         downloadJSONFile: 'Download JSON file',
         camera: 'Camera',
-        monitor: 'Monitor'
+        monitor: 'Monitor',
+        connect: 'Connect',
+        disconnect: 'Disconnect',
+        autoConnect: 'Auto connect',
+        openAudio: 'Open audio'
+      },
+      des: {
+        t1: 'Native Support',
+        d1: 'Most modern browsers natively support WebRTC',
+        t2: 'Efficient Realtime',
+        d2: 'WebRTC utilizes peer-to-peer (P2P) communication to avoid server relays, improving communication efficiency',
+        t3: 'Privacy & Security',
+        d3: 'WebRTC incorporates built-in encryption to secure the communication content'
       },
       hint: {}
     },
     zh: {
-      welcome: '欢迎',
+      welcome: '基于WebRTC的点对点网络摄像头实时监控工具站',
       home: '主页',
       about: '关于',
       login: '登陆',
@@ -85,7 +101,10 @@ export default defineI18nConfig(() => ({
         summaryResult: '总结结果',
         wordCount: '字数',
         audioFile: '音频文件',
-        webRec: '网页录音'
+        webRec: '网页录音',
+        connectionID: '连接ID',
+        audioDev: '音频设备',
+        videoDev: '视频设备'
       },
       btn: {
         myFav: '我的收藏',
@@ -108,7 +127,19 @@ export default defineI18nConfig(() => ({
         stopRec: '停止录制',
         downloadJSONFile: '下载JSON文件',
         camera: '摄像头',
-        monitor: '监控'
+        monitor: '监控',
+        connect: '连接',
+        disconnect: '断开连接',
+        autoConnect: '自动连接',
+        openAudio: '开启音频'
+      },
+      des: {
+        t1: '原生支持',
+        d1: '大部分现代浏览器原生支持WebRTC',
+        t2: '高效实时',
+        d2: 'WebRTC通过P2P通信避免服务器中继，提高通信效率',
+        t3: '隐私安全',
+        d3: 'WebRTC内置了加密技术，保护了通信内容的安全'
       },
       hint: {}
     }

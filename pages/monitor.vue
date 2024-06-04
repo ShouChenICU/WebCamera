@@ -2,6 +2,8 @@
 import { RTCNode } from '#imports'
 import { SSE } from 'sse.js'
 
+const { t } = useI18n()
+const navHeight = useNavHeight()
 const curStream = ref<MediaStream>()
 const videoElm = ref()
 const logInfo = ref<any>({
@@ -9,8 +11,18 @@ const logInfo = ref<any>({
   logs: [],
   bytesReceived: 0,
   bytesSent: 0,
-  localCandidateType: '',
-  remoteCandidateType: ''
+  local: {
+    address: '',
+    port: '',
+    protocol: '',
+    candidateType: ''
+  },
+  remote: {
+    address: '',
+    port: '',
+    protocol: '',
+    candidateType: ''
+  }
 })
 const isShowConnectId = ref(false)
 const cameraId = ref()
@@ -19,6 +31,11 @@ const isConnecting = ref(false)
 const sse = shallowRef<SSE>()
 const rtcNode = shallowRef<RTCNode>()
 let stateJobId: any
+let watchDogJonId: any
+
+useSeoMeta({
+  title: t('btn.monitor')
+})
 
 function closeStream() {
   if (curStream.value) {
@@ -30,6 +47,7 @@ function closeStream() {
 
 function disconnect() {
   clearInterval(stateJobId)
+  clearInterval(watchDogJonId)
   logInfo.value.logs.push({
     time: toISOStringWithTimezone(new Date()),
     type: 'info',
@@ -141,7 +159,7 @@ function doConnect() {
   if (rtcNode) {
     rtcNode.value?.dispose()
   }
-  rtcNode.value = new RTCNode()
+  rtcNode.value = new RTCNode(pubIceServers)
   rtcNode.value.onConnected = () => {
     isConnecting.value = false
     logInfo.value.state = 'connected'
@@ -150,8 +168,8 @@ function doConnect() {
       const info = await rtcNode.value?.getInfo()
       logInfo.value.bytesSent = info?.bytesSent
       logInfo.value.bytesReceived = info?.bytesReceived
-      logInfo.value.localCandidateType = info?.localCandidateType
-      logInfo.value.remoteCandidateType = info?.remoteCandidateType
+      logInfo.value.local = info?.local
+      logInfo.value.remote = info?.remote
     }, 1000)
     logInfo.value.logs.push({
       time: toISOStringWithTimezone(new Date()),
@@ -188,6 +206,17 @@ function doConnect() {
   curStream.value = rtcNode.value.getMediaStream()
 
   connectSignServer()
+
+  watchDogJonId = setTimeout(() => {
+    if (isConnecting.value) {
+      logInfo.value.logs.push({
+        time: toISOStringWithTimezone(new Date()),
+        type: 'error',
+        content: 'Connect timeout'
+      })
+      disconnect()
+    }
+  }, 10e3)
 }
 
 onMounted(() => {
@@ -209,13 +238,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bg-neutral-50 dark:bg-black">
+  <div class="bg-neutral-50 dark:bg-black" :style="{ 'padding-top': navHeight + 'px' }">
     <div class="overflow-y-auto md:flex md:flex-row p-4">
       <div class="md:flex-1 md:p-4 space-y-4">
-        <UFormGroup label="连接串">
+        <UFormGroup :label="$t('label.connectionID')">
           <UInput
             :type="isShowConnectId ? 'text' : 'password'"
             v-model="cameraId"
+            :disabled="isConnecting"
             :ui="{ icon: { trailing: { pointer: '' } } }"
           >
             <template #trailing>
@@ -245,7 +275,7 @@ onUnmounted(() => {
             :loading="isConnecting"
             ><template #leading
               ><Icon name="solar:link-round-angle-bold" v-if="!isConnecting" /></template
-            >连接</UButton
+            >{{ $t('btn.connect') }}</UButton
           >
 
           <UButton
@@ -258,7 +288,7 @@ onUnmounted(() => {
             v-show="logInfo.state === 'connected'"
             ><template #leading
               ><Icon name="solar:link-broken-minimalistic-bold" v-if="!isConnecting" /></template
-            >断开连接</UButton
+            >{{ $t('btn.disconnect') }}</UButton
           >
         </div>
       </div>

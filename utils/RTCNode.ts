@@ -95,8 +95,18 @@ export class RTCNode {
         const info = {
           bytesSent: 0,
           bytesReceived: 0,
-          localCandidateType: '',
-          remoteCandidateType: ''
+          local: {
+            address: '',
+            port: 0,
+            protocol: '',
+            candidateType: ''
+          },
+          remote: {
+            address: '',
+            port: 0,
+            protocol: '',
+            candidateType: ''
+          }
         }
         for (const state of states.values()) {
           if (state.type === 'transport') {
@@ -104,11 +114,15 @@ export class RTCNode {
             info.bytesReceived = state?.bytesReceived
             const selectedCandidatePair = states.get(state?.selectedCandidatePairId)
             const localCandidate = states.get(selectedCandidatePair?.localCandidateId)
-            const localCandidateType = localCandidate?.candidateType
-            info.localCandidateType = localCandidateType
+            info.local.address = localCandidate?.address
+            info.local.port = localCandidate?.port
+            info.local.protocol = localCandidate?.protocol
+            info.local.candidateType = localCandidate?.candidateType
             const remoteCandidate = states.get(selectedCandidatePair?.remoteCandidateId)
-            const remoteCandidateType = remoteCandidate?.candidateType
-            info.remoteCandidateType = remoteCandidateType
+            info.remote.address = remoteCandidate?.address
+            info.remote.port = remoteCandidate?.port
+            info.remote.protocol = remoteCandidate?.protocol
+            info.remote.candidateType = remoteCandidate?.candidateType
             break
           }
         }

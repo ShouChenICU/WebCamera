@@ -1,6 +1,6 @@
 body {
   @apply bg-white text-black;
-  @apply dark:bg-slate-950 dark:text-white/95;
+  @apply dark:bg-slate-800 dark:text-white;
   margin: 0;
   width: 100%;
   min-height: 100vh;

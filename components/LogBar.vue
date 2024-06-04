@@ -10,18 +10,57 @@ const logs = computed(() => {
 
 <template>
   <div class="bg-white dark:bg-slate-800 border-t border-color">
-    <div class="p-1 text-sm flex flex-row items-center">
-      <span>{{ logInfo.state }}</span>
+    <div class="p-1 text-sm md:flex flex-row items-center">
+      <span
+        class="inline-flex rounded-full px-2 py-1 flex-row items-center"
+        :class="{
+          'bg-rose-300 dark:bg-rose-900': logInfo.state !== 'connected',
+          'bg-green-400 dark:bg-green-700': logInfo.state === 'connected'
+        }"
+        ><Icon
+          class="mr-1"
+          :name="
+            logInfo.state === 'connected'
+              ? 'solar:link-round-angle-bold'
+              : 'solar:link-broken-minimalistic-bold'
+          "
+        />{{ logInfo.state }}</span
+      >
 
-      <div class="flex-1"></div>
+      <div class="md:ml-2 px-1">
+        local:
+        {{
+          logInfo?.local?.protocol +
+          ' ' +
+          logInfo?.local?.address +
+          ':' +
+          logInfo?.local?.port +
+          ' ' +
+          logInfo?.local?.candidateType
+        }}
+      </div>
+      <div class="md:ml-2 px-1">
+        remote:
+        {{
+          logInfo?.remote?.protocol +
+          ' ' +
+          logInfo?.remote?.address +
+          ':' +
+          logInfo?.remote?.port +
+          ' ' +
+          logInfo?.remote?.candidateType
+        }}
+      </div>
 
-      <span>local: {{ logInfo.localCandidateType }}</span>
-      <span class="ml-2">remote: {{ logInfo.remoteCandidateType }}</span>
-      <span class="ml-2">TX: {{ humanFileSize(logInfo.bytesSent) }}</span>
-      <span class="ml-2">RX: {{ humanFileSize(logInfo.bytesReceived) }}</span>
+      <span class="md:flex-1"></span>
+
+      <div class="ml-2 inline-block">Tx: {{ humanFileSize(logInfo.bytesSent) }}</div>
+      <div class="ml-2 inline-block">Rx: {{ humanFileSize(logInfo.bytesReceived) }}</div>
     </div>
 
-    <div class="max-h-[60vh] overflow-y-auto text-xs p-1">
+    <div
+      class="max-h-[50vh] overflow-y-auto overflow-x-hidden break-words break-all text-xs p-1 pb-4"
+    >
       <p v-for="log in logs">
         <span class="text-neutral-500">{{ log.time }}</span>
         <span

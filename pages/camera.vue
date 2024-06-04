@@ -2,6 +2,8 @@
 import { RTCNode } from '#imports'
 import { SSE } from 'sse.js'
 
+const { t } = useI18n()
+const navHeight = useNavHeight()
 const videoElm = ref()
 const curStream = ref<MediaStream>()
 const curVideoDevInfo = ref({ id: undefined, label: undefined })
@@ -15,8 +17,18 @@ const logInfo = ref<any>({
   logs: [],
   bytesReceived: 0,
   bytesSent: 0,
-  localCandidateType: '',
-  remoteCandidateType: ''
+  local: {
+    address: '',
+    port: '',
+    protocol: '',
+    candidateType: ''
+  },
+  remote: {
+    address: '',
+    port: '',
+    protocol: '',
+    candidateType: ''
+  }
 })
 const cameraId = ref()
 const monitorId = ref('')
@@ -25,6 +37,11 @@ const isConnecting = ref(false)
 const sse = shallowRef<SSE>()
 const rtcNode = shallowRef<RTCNode>()
 let stateJobId: any
+let watchDogJonId: any
+
+useSeoMeta({
+  title: t('btn.camera')
+})
 
 function tryReconnnect() {
   setTimeout(() => {
@@ -37,6 +54,7 @@ function tryReconnnect() {
 
 function disconnect() {
   clearInterval(stateJobId)
+  clearInterval(watchDogJonId)
   logInfo.value.logs.push({
     time: toISOStringWithTimezone(new Date()),
     type: 'info',
@@ -114,6 +132,16 @@ function connectSignServer() {
         monitorId.value = obj.content
         if (curStream.value) {
           rtcNode.value?.updateStream(curStream.value)
+          watchDogJonId = setTimeout(() => {
+            if (isConnecting.value) {
+              logInfo.value.logs.push({
+                time: toISOStringWithTimezone(new Date()),
+                type: 'error',
+                content: 'Connect timeout'
+              })
+              disconnect()
+            }
+          }, 10e3)
         }
       }
     }
@@ -137,7 +165,7 @@ function doConnect() {
 
   rtcNode.value?.dispose()
   // refreshStream()
-  rtcNode.value = new RTCNode()
+  rtcNode.value = new RTCNode(pubIceServers)
   rtcNode.value.onConnected = () => {
     isConnecting.value = false
     logInfo.value.state = 'connected'
@@ -145,8 +173,8 @@ function doConnect() {
       const info = await rtcNode.value?.getInfo()
       logInfo.value.bytesSent = info?.bytesSent
       logInfo.value.bytesReceived = info?.bytesReceived
-      logInfo.value.localCandidateType = info?.localCandidateType
-      logInfo.value.remoteCandidateType = info?.remoteCandidateType
+      logInfo.value.local = info?.local
+      logInfo.value.remote = info?.remote
     }, 1000)
     logInfo.value.logs.push({
       time: toISOStringWithTimezone(new Date()),
@@ -323,26 +351,31 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bg-neutral-50 dark:bg-black">
+  <div class="bg-neutral-50 dark:bg-black" :style="{ 'padding-top': navHeight + 'px' }">
     <div class="overflow-y-auto md:flex md:flex-row p-4">
       <div class="md:flex-1 md:p-4 space-y-4">
-        <UFormGroup label="视频设备">
-          <USelectMenu :options="videoDevList" v-model="curVideoDevInfo" />
+        <UFormGroup :label="$t('label.videoDev')">
+          <USelectMenu :options="videoDevList" v-model="curVideoDevInfo" :disabled="isConnecting" />
         </UFormGroup>
-        <UFormGroup label="音频设备">
-          <USelectMenu :options="audioDevList" v-model="curAudioDevInfo" :disabled="!isOpenAudio" />
+        <UFormGroup :label="$t('label.audioDev')">
+          <USelectMenu
+            :options="audioDevList"
+            v-model="curAudioDevInfo"
+            :disabled="!isOpenAudio || isConnecting"
+          />
         </UFormGroup>
         <div class="flex flex-row items-center justify-end gap-4 text-sm">
           <label class="contents">
-            <span>开启音频</span>
-            <UToggle v-model="isOpenAudio" />
+            <span>{{ $t('btn.openAudio') }}</span>
+            <UToggle v-model="isOpenAudio" :disabled="isConnecting" />
           </label>
         </div>
 
-        <UFormGroup label="连接串">
+        <UFormGroup :label="$t('label.connectionID')">
           <UInput
             :type="isShowConnectId ? 'text' : 'password'"
             v-model="cameraId"
+            :disabled="isConnecting"
             :ui="{ icon: { trailing: { pointer: '' } } }"
           >
             <template #trailing>
@@ -372,7 +405,7 @@ onUnmounted(() => {
             :loading="isConnecting"
             ><template #leading
               ><Icon name="solar:link-round-angle-bold" v-if="!isConnecting" /></template
-            >连接</UButton
+            >{{ $t('btn.connect') }}</UButton
           >
           <UButton
             block
@@ -384,18 +417,18 @@ onUnmounted(() => {
             v-show="logInfo.state === 'connected'"
             ><template #leading
               ><Icon name="solar:link-broken-minimalistic-bold" v-if="!isConnecting" /></template
-            >断开连接</UButton
+            >{{ $t('btn.disconnect') }}</UButton
           >
         </div>
         <div class="flex flex-row items-center justify-end gap-4 text-sm">
           <label class="contents">
-            <span>自动连接</span>
+            <span>{{ $t('btn.autoConnect') }}</span>
             <UToggle v-model="isAutoReconnect" />
           </label>
         </div>
       </div>
       <div class="md:flex-1 md:p-4 mt-8 md:mt-0">
-        <video autoplay muted ref="videoElm" class="w-full rounded-md"></video>
+        <video autoplay controls muted ref="videoElm" class="w-full rounded-md"></video>
       </div>
     </div>
 
