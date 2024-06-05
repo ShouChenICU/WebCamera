@@ -1,3 +1,6 @@
+/**
+ * RTC节点封装工具类
+ */
 export class RTCNode {
   private pc: RTCPeerConnection
   private mediaStream: MediaStream
@@ -36,6 +39,9 @@ export class RTCNode {
     }
   }
 
+  /**
+   * 重协商SDP
+   */
   private async reNegotition() {
     return this.pc
       .createOffer()
@@ -48,6 +54,10 @@ export class RTCNode {
       })
   }
 
+  /**
+   * 更新要发送的媒体流
+   * @param stream 媒体流
+   */
   public updateStream(stream: MediaStream) {
     this.pc.getSenders().forEach((sender) => {
       this.pc.removeTrack(sender)
@@ -56,6 +66,10 @@ export class RTCNode {
     stream.getTracks().forEach((track) => this.pc.addTrack(track))
   }
 
+  /**
+   * 设置远端SDP
+   * @param sdp 会话描述
+   */
   public async setRemoteSDP(sdp: RTCSessionDescriptionInit) {
     return this.pc
       .setRemoteDescription(sdp)
@@ -73,14 +87,26 @@ export class RTCNode {
       })
   }
 
+  /**
+   * 添加ICE服务候选
+   * @param candidate ICE服务候选
+   */
   public async addICECandidate(candidate: RTCIceCandidateInit) {
     return this.pc.addIceCandidate(candidate)
   }
 
+  /**
+   * 获取接收到的媒体流
+   * @returns 媒体流
+   */
   public getMediaStream() {
     return this.mediaStream
   }
 
+  /**
+   * 获取数据通道，没有则创建
+   * @returns 数据通道
+   */
   public getDataChunnel() {
     if (!this.dataChunnel) {
       this.dataChunnel = this.pc.createDataChannel('dataChunnel')
@@ -88,6 +114,10 @@ export class RTCNode {
     return this.dataChunnel
   }
 
+  /**
+   * 获取统计信息
+   * @returns 统计信息
+   */
   public async getInfo() {
     return this.pc
       .getStats()
@@ -131,10 +161,17 @@ export class RTCNode {
       .catch(this.onError)
   }
 
+  /**
+   * 判断是否已连接
+   * @returns 为 true 则已连接，否则未连接
+   */
   public isConnected() {
     return this.pc.connectionState === 'connected'
   }
 
+  /**
+   * 销毁节点并清理资源
+   */
   public dispose() {
     // 停止发送的媒体轨道
     this.pc.getSenders().forEach((sender) => sender?.track?.stop())

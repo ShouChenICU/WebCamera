@@ -41,6 +41,18 @@ onMounted(() => {
     <div class="contents">
       <!-- <UDivider orientation="vertical" class="mx-2 h-4" /> -->
 
+      <UButton
+        variant="ghost"
+        color="gray"
+        size="xl"
+        square
+        to="https://github.com/ShouChenICU/WebCamera"
+      >
+        <template #leading>
+          <Icon name="mdi:github" />
+        </template>
+      </UButton>
+
       <UButton variant="ghost" color="gray" size="xl" square @click="switchI18n">
         <template #leading>
           <Icon name="icon-park-outline:chinese" v-if="locale === 'zh'" />

@@ -30,7 +30,7 @@ useSeoMeta({
     <div class="pb-12 bg-sky-200 dark:bg-sky-900 pt-24">
       <div class="text-center">
         <h1 class="text-3xl flex flex-row justify-center items-center gap-4">
-          <img src="/favicon.webp" alt="web camera" class="size-8" />Web Camera
+          <img src="/favicon.webp" alt="web camera" class="size-8" />WebCamera
         </h1>
         <h2 class="text-base mt-8">{{ $t('welcome') }}</h2>
       </div>

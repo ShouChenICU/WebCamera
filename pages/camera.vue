@@ -5,13 +5,24 @@ import { SSE } from 'sse.js'
 const { t } = useI18n()
 const navHeight = useNavHeight()
 const videoElm = ref()
+
+// 当前媒体流
 const curStream = ref<MediaStream>()
+
+// 当前音视频设备
 const curVideoDevInfo = ref({ id: undefined, label: undefined })
 const curAudioDevInfo = ref({ id: undefined, label: undefined })
+
+// 可选音视频设备
 const videoDevList = ref<Array<any>>([])
 const audioDevList = ref<Array<any>>([])
+
 const isOpenAudio = ref(true)
+
+// 是否开启自动重联
 const isAutoReconnect = ref(false)
+
+// 日志信息
 const logInfo = ref<any>({
   state: 'disconnected',
   logs: [],
@@ -30,12 +41,18 @@ const logInfo = ref<any>({
     candidateType: ''
   }
 })
+
 const cameraId = ref()
 const monitorId = ref('')
 const isShowConnectId = ref(false)
 const isConnecting = ref(false)
+
+// 连接信令服务器的EventSource
 const sse = shallowRef<SSE>()
+
+// RTC封装
 const rtcNode = shallowRef<RTCNode>()
+
 let stateJobId: any
 let watchDogJonId: any
 
@@ -43,6 +60,9 @@ useSeoMeta({
   title: t('btn.camera')
 })
 
+/**
+ * 摄像头自动尝试重连
+ */
 function tryReconnnect() {
   setTimeout(() => {
     if (!isAutoReconnect.value || isConnecting.value || rtcNode.value?.isConnected()) {
@@ -52,6 +72,9 @@ function tryReconnnect() {
   }, 3000)
 }
 
+/**
+ * 断开连接并清理资源
+ */
 function disconnect() {
   clearInterval(stateJobId)
   clearInterval(watchDogJonId)
@@ -69,8 +92,13 @@ function disconnect() {
   tryReconnnect()
 }
 
+/**
+ * 连接信令服务器
+ */
 function connectSignServer() {
-  if (!sse.value || sse.value.readyState !== SSE.OPEN) {
+  if (!sse.value || sse.value.readyState !== 1) {
+    // 如果SSE不存在或者状态不是连接，则初始化
+    // 注意这里 SSE.OPEN 取不到值，使用数字1
     logInfo.value.logs.push({
       time: toISOStringWithTimezone(new Date()),
       type: 'info',
@@ -94,17 +122,17 @@ function connectSignServer() {
       console.warn(e)
     }
     sse.value.onreadystatechange = (e) => {
-      if (e.readyState === 2) {
+      if (sse.value?.readyState === 2) {
         logInfo.value.logs.push({
           time: toISOStringWithTimezone(new Date()),
           type: 'warn',
           content: 'Sign server disconnected'
         })
         setTimeout(() => {
-          if (rtcNode.value?.isConnected()) {
+          if (rtcNode.value?.isConnected() || isConnecting.value) {
             connectSignServer()
           }
-        }, 10)
+        }, 500)
       }
     }
   }
@@ -132,6 +160,8 @@ function connectSignServer() {
         monitorId.value = obj.content
         if (curStream.value) {
           rtcNode.value?.updateStream(curStream.value)
+
+          // 超时检测
           watchDogJonId = setTimeout(() => {
             if (isConnecting.value) {
               logInfo.value.logs.push({
@@ -141,7 +171,7 @@ function connectSignServer() {
               })
               disconnect()
             }
-          }, 10e3)
+          }, 20e3)
         }
       }
     }
@@ -149,6 +179,9 @@ function connectSignServer() {
   sse.value?.stream()
 }
 
+/**
+ * 开始连接
+ */
 function doConnect() {
   if (isConnecting.value || !cameraId.value.trim()) {
     return
@@ -212,6 +245,9 @@ function doConnect() {
   connectSignServer()
 }
 
+/**
+ * 关闭当前媒体流
+ */
 function closeStream() {
   if (curStream.value) {
     curStream.value.getTracks().forEach((t) => t.stop())
@@ -219,6 +255,9 @@ function closeStream() {
   }
 }
 
+/**
+ * 刷新媒体流
+ */
 async function refreshStream() {
   closeStream()
   try {
@@ -279,6 +318,8 @@ onMounted(async () => {
     type: 'info',
     content: 'Camera'
   })
+
+  // 尝试使用上次选择的设备
   let tmpDev = localStorage.getItem('videoDev')
   if (tmpDev) {
     curVideoDevInfo.value = JSON.parse(tmpDev)
@@ -288,9 +329,12 @@ onMounted(async () => {
     curAudioDevInfo.value = JSON.parse(tmpDev)
   }
 
+  // 更新媒体流
   if (!(await refreshStream())) {
     return
   }
+
+  // 枚举媒体设备
   const devs = await navigator?.mediaDevices?.enumerateDevices()
   const devInfoMap: any = {}
   for (const dev of devs) {
@@ -322,14 +366,15 @@ onMounted(async () => {
   watch(curVideoDevInfo, refreshStream)
   watch(isOpenAudio, refreshStream)
 
+  // 获取上次使用的连接ID
   cameraId.value = localStorage.getItem('cameraId')
   if (!cameraId.value) {
     cameraId.value = genRandomString(16)
     localStorage.setItem('cameraId', cameraId.value)
   }
 
-  const tmp = localStorage.getItem('isAutoReconnect')
-  if (tmp === 'true') {
+  const tmpIsAutoReconnect = localStorage.getItem('isAutoReconnect')
+  if (tmpIsAutoReconnect === 'true') {
     isAutoReconnect.value = true
     tryReconnnect()
   } else {

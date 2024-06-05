@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { RTCNode } from '#imports'
+import type { _1 } from '#tailwind-config/theme/aspectRatio'
 import { SSE } from 'sse.js'
 
 const { t } = useI18n()
 const navHeight = useNavHeight()
+
+// 当前媒体流
 const curStream = ref<MediaStream>()
 const videoElm = ref()
+
+// 日志信息
 const logInfo = ref<any>({
   state: 'disconnected',
   logs: [],
@@ -24,12 +29,18 @@ const logInfo = ref<any>({
     candidateType: ''
   }
 })
+
 const isShowConnectId = ref(false)
 const cameraId = ref()
 const monitorId = ref('')
 const isConnecting = ref(false)
+
+// 连接信令服务器的EventSource
 const sse = shallowRef<SSE>()
+
+// RTC封装
 const rtcNode = shallowRef<RTCNode>()
+
 let stateJobId: any
 let watchDogJonId: any
 
@@ -37,6 +48,9 @@ useSeoMeta({
   title: t('btn.monitor')
 })
 
+/**
+ * 关闭媒体流
+ */
 function closeStream() {
   if (curStream.value) {
     curStream.value.getTracks().forEach((t) => t.stop())
@@ -45,6 +59,9 @@ function closeStream() {
   }
 }
 
+/**
+ * 断开连接并清理资源
+ */
 function disconnect() {
   clearInterval(stateJobId)
   clearInterval(watchDogJonId)
@@ -60,8 +77,13 @@ function disconnect() {
   closeStream()
 }
 
+/**
+ * 连接信令服务器
+ */
 function connectSignServer() {
-  if (!sse.value || sse.value.readyState !== SSE.OPEN) {
+  if (!sse.value || sse.value.readyState !== 1) {
+    // 如果SSE不存在或者状态不是连接，则初始化
+    // 注意这里 SSE.OPEN 取不到值，使用数字1
     logInfo.value.logs.push({
       time: toISOStringWithTimezone(new Date()),
       type: 'info',
@@ -98,7 +120,7 @@ function connectSignServer() {
       console.warn(e)
     }
     sse.value.onreadystatechange = (e) => {
-      if (e.readyState === 2) {
+      if (sse.value?.readyState === 2) {
         logInfo.value.logs.push({
           time: toISOStringWithTimezone(new Date()),
           type: 'warn',
@@ -108,7 +130,7 @@ function connectSignServer() {
           if (rtcNode.value?.isConnected()) {
             connectSignServer()
           }
-        }, 10)
+        }, 500)
       }
     }
   }
@@ -141,6 +163,9 @@ function connectSignServer() {
   sse.value?.stream()
 }
 
+/**
+ * 开始连接
+ */
 function doConnect() {
   if (isConnecting.value || !cameraId.value.trim()) {
     return
@@ -207,6 +232,7 @@ function doConnect() {
 
   connectSignServer()
 
+  // 超时检测
   watchDogJonId = setTimeout(() => {
     if (isConnecting.value) {
       logInfo.value.logs.push({
@@ -216,7 +242,7 @@ function doConnect() {
       })
       disconnect()
     }
-  }, 10e3)
+  }, 20e3)
 }
 
 onMounted(() => {

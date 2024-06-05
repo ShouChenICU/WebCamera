@@ -74,7 +74,7 @@ export default defineI18nConfig(() => ({
       hint: {}
     },
     zh: {
-      welcome: '基于WebRTC的点对点网络摄像头实时监控工具站',
+      welcome: '基于WebRTC的点对点网络摄像头实时监控工具',
       home: '主页',
       about: '关于',
       login: '登陆',
