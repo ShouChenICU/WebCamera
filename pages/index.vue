@@ -27,7 +27,9 @@ useSeoMeta({
 
 <template>
   <div>
-    <div class="pb-12 bg-sky-200 dark:bg-sky-900 pt-24">
+    <div
+      class="relative pb-12 pt-24 inset-0 bg-white bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:6rem_4rem] dark:bg-[#121212] dark:bg-[linear-gradient(to_right,#303030_1px,transparent_1px),linear-gradient(to_bottom,#303030_1px,transparent_1px)]"
+    >
       <div class="text-center">
         <h1 class="text-3xl flex flex-row justify-center items-center gap-4">
           <img src="/favicon.webp" alt="web camera" class="size-8" />WebCamera
@@ -51,7 +53,7 @@ useSeoMeta({
     <div class="md:grid md:grid-cols-3 md:p-12 gap-4 p-4 space-y-4 md:space-y-0">
       <div
         v-for="(item, idx) of desList"
-        class="flex flex-row items-center md:gap-4 gap-3 p-3 shadow shadow-black/20 rounded-lg bg-white dark:bg-gray-700"
+        class="flex flex-row items-center md:gap-4 gap-3 p-3 shadow shadow-black/20 rounded-lg bg-white dark:bg-neutral-800"
       >
         <Icon :name="item.icon" size="32" />
         <div class="flex-1">
