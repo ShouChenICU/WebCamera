@@ -4,7 +4,7 @@
 ![Nuxt](https://img.shields.io/badge/nuxt.js-v3.11.2-green.svg)
 ![Yarn](https://img.shields.io/badge/yarn-v1.22.22-blue.svg)
 
-<img src="./public/ogImg.webp" style="border-radius:1rem;margin:1rem 5%;width:90%;box-shadow:0 1px 3px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)" />
+![WebCamera](./public/ogImg.webp)
 
 WebCamera 是一个基于 WebRTC 技术的网络摄像头工具站，使用 Nuxt.js 框架开发，并通过 Yarn 进行包管理。
 
@@ -33,6 +33,7 @@ WebCamera 是一个基于 WebRTC 技术的网络摄像头工具站，使用 Nuxt
 
 ```bash
 git clone https://github.com/ShouChenICU/WebCamera.git
+
 cd WebCamera
 ```
 
