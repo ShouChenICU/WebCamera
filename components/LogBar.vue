@@ -9,7 +9,7 @@ const logs = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-800 border-t border-color">
+  <div class="bg-white dark:bg-[#121212] border-t border-color">
     <div class="p-1 text-sm md:flex flex-row items-center">
       <span
         class="inline-flex rounded-full px-2 py-1 flex-row items-center"

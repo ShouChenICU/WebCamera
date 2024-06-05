@@ -30,7 +30,7 @@ onMounted(() => {
 <template>
   <nav
     ref="navElm"
-    class="fixed top-0 right-0 left-0 flex flex-row items-center px-4 md:px-6 py-3 backdrop-blur z-50"
+    class="fixed top-0 right-0 left-0 flex flex-row items-center px-4 md:px-6 py-3 z-50"
   >
     <NuxtLink :to="locatePath('/')" class="contents"
       ><img src="/favicon.webp" alt="web camera" class="size-6 mr-2" />WebCamera</NuxtLink
