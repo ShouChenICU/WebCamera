@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production # 设置环境变量，如果需要的话
+    command: node server/index.mjs # 用你的启动命令替换如果有必要
