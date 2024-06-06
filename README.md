@@ -70,6 +70,13 @@ yarn run build
 node server/index.mjs
 ```
 
+## Docker 运行
+
+```bash
+docker build -t webcamera .
+docker run -d -p 3000:3000 webcamera
+```
+
 **自部署请注意**: 浏览器媒体权限（摄像头和麦克风等）需要地址为`localhost`或使用`HTTPS`才能正常申请和启用，请自行配置`HTTPS`部署。
 
 ## 贡献
