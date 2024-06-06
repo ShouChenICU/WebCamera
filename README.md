@@ -14,6 +14,7 @@ WebCamera 是一个基于 WebRTC 技术的网络摄像头工具站，使用 Nuxt
 - [安装](#安装)
 - [使用](#使用)
 - [构建](#构建)
+- [Docker运行](#Docker运行)
 - [贡献](#贡献)
 - [许可证](#许可证)
 
@@ -53,7 +54,7 @@ yarn run dev
 
 2. 打开浏览器访问 `http://localhost:3000`
 
-3. 摄像头先连接，然后监控页面填入和摄像头相同的连接ID，点连接，即可连接到摄像头
+3. 摄像头先连接，然后监控页面填入和摄像头相同的连接ID，点连接，即可连接到摄像头。
 
 ## 构建
 
@@ -70,14 +71,14 @@ yarn run build
 node server/index.mjs
 ```
 
-## Docker 运行
+**自部署请注意**: 浏览器媒体权限（摄像头和麦克风等）需要地址为`localhost`或使用`HTTPS`才能正常申请和启用，请自行配置`HTTPS`部署。
+
+## Docker运行
 
 ```bash
 docker build -t webcamera .
 docker run -d -p 3000:3000 webcamera
 ```
-
-**自部署请注意**: 浏览器媒体权限（摄像头和麦克风等）需要地址为`localhost`或使用`HTTPS`才能正常申请和启用，请自行配置`HTTPS`部署。
 
 ## 贡献
 
