@@ -420,8 +420,9 @@ onUnmounted(() => {
           <UInput
             :type="isShowConnectId ? 'text' : 'password'"
             v-model="cameraId"
-            :disabled="isConnecting"
+            :disabled="isConnecting || logInfo.state === 'connected'"
             :ui="{ icon: { trailing: { pointer: '' } } }"
+            size="lg"
           >
             <template #trailing>
               <UButton

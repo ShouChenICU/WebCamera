@@ -115,10 +115,61 @@ export function closeRTCPeerConnection(peerConnection: RTCPeerConnection): void 
  * @return 格式化后的字符串
  */
 export function humanFileSize(bytes: number, decimals = 2) {
-  if (!bytes) return '0 B'
+  if (!bytes) return '0B'
   var k = 1024
   var dm = decimals || 2
   var sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
   var i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + sizes[i]
+}
+
+/**
+ * 判断浏览器是否支持现代文件操作
+ */
+export function isModernFileAPIAvailable() {
+  const fileHandleSupported = 'FileSystemFileHandle' in window
+  const openFilePickerSupported = 'showOpenFilePicker' in window
+  const saveFilePickerSupported = 'showSaveFilePicker' in window
+  const directoryPickerSupported = 'showDirectoryPicker' in window
+
+  return (
+    fileHandleSupported &&
+    openFilePickerSupported &&
+    saveFilePickerSupported &&
+    directoryPickerSupported
+  )
+}
+
+export function doDownloadFromHref(href: string, filename: string) {
+  const a = document.createElement('a')
+  a.style.display = 'none'
+  a.href = href
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+/**
+ * 从Blob下载
+ *
+ * @param {Blob} blob
+ * @param {string} filename
+ */
+export function doDownloadFromBlob(blob: Blob | File, filename: string) {
+  const objUrl = URL.createObjectURL(blob)
+  doDownloadFromHref(objUrl, filename)
+  URL.revokeObjectURL(objUrl)
+}
+
+export function getRecordMimeTypes() {
+  const mimeTypes = [
+    'video/mp4',
+    'video/webm',
+    'video/ogg',
+    'video/mpeg',
+    'video/quicktime',
+    'video/x-msvideo'
+  ]
+  return mimeTypes.filter((t) => MediaRecorder.isTypeSupported(t))
 }
