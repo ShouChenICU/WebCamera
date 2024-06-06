@@ -26,7 +26,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <div>
+  <div class="pb-12">
     <div
       class="relative pb-12 pt-24 inset-0 bg-white bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:6rem_4rem] dark:bg-[#121212] dark:bg-[linear-gradient(to_right,#303030_1px,transparent_1px),linear-gradient(to_bottom,#303030_1px,transparent_1px)]"
     >
@@ -61,6 +61,14 @@ useSeoMeta({
           <p class="md:text-sm text-xs">{{ $t('des.' + item.des) }}</p>
         </div>
       </div>
+    </div>
+
+    <div class="md:px-12 p-4 space-y-2">
+      <h2 class="text-lg flex flex-row items-center gap-1">
+        <Icon name="fluent:data-usage-24-regular" />{{ $t('usage.usage') }}
+      </h2>
+      <p>1. {{ $t('usage.step1') }}</p>
+      <p>2. {{ $t('usage.step2') }}</p>
     </div>
   </div>
 </template>

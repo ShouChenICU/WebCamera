@@ -44,9 +44,84 @@ const rtcNode = shallowRef<RTCNode>()
 let stateJobId: any
 let watchDogJonId: any
 
+const isRecordSettingModalOpen = ref(false)
+const isRecording = ref(false)
+const recordingStartTime = ref(0)
+const recordingTimeStr = ref('')
+const recordSize = ref(0)
+const recordSetting = ref({
+  mimeType: '',
+  bitsPerSecond: 0
+})
+let videoChunks: Blob[] = []
+let fileHandler: FileSystemFileHandle
+let mediaRecoder: MediaRecorder
+
 useSeoMeta({
   title: t('btn.monitor')
 })
+
+/**
+ * 开始录制
+ */
+async function startRecording() {
+  if (isRecording.value || !curStream.value) {
+    return
+  }
+  isRecording.value = true
+  recordingStartTime.value = new Date().getTime()
+  recordSize.value = 0
+  videoChunks = []
+  if (isModernFileAPIAvailable()) {
+    // 支持现代化文件访问，数据直接写入磁盘
+    fileHandler = await showSaveFilePicker({
+      startIn: 'downloads',
+      suggestedName: 'Video_' + formatDateTime(new Date(), 'yyyyMMddHHmmss') + '.webm'
+    })
+    const writer = await fileHandler.createWritable()
+
+    mediaRecoder = new MediaRecorder(curStream.value, { mimeType: recordSetting.value.mimeType })
+    mediaRecoder.ondataavailable = (ev) => {
+      recordingTimeStr.value = formatTime(new Date().getTime() - recordingStartTime.value)
+      recordSize.value += ev.data.size
+      return writer.write(ev.data)
+    }
+    mediaRecoder.onerror = console.error
+    mediaRecoder.onstop = () => writer.close()
+    mediaRecoder.start(200)
+  } else {
+    // 不支持现代化文件访问，录制数据保存在内存中（注意可能导致OOM
+
+    mediaRecoder = new MediaRecorder(curStream.value, { mimeType: recordSetting.value.mimeType })
+    mediaRecoder.ondataavailable = (ev) => {
+      const timeDuration = new Date().getTime() - recordingStartTime.value
+      recordingTimeStr.value = formatTime(timeDuration)
+      recordSize.value += ev.data.size
+      videoChunks.push(ev.data)
+      if (timeDuration >= 600e3) {
+        // 超过十分钟，停止录制，避免OOM
+        mediaRecoder.stop()
+      }
+    }
+    mediaRecoder.onerror = console.error
+    mediaRecoder.onstop = () => {
+      const videoBlob = new Blob(videoChunks, { type: mediaRecoder.mimeType })
+      doDownloadFromBlob(
+        videoBlob,
+        'Video_' + formatDateTime(new Date(), 'yyyyMMddHHmmss') + '.webm'
+      )
+    }
+    mediaRecoder.start(200)
+  }
+}
+
+/**
+ * 结束录制
+ */
+function stopRecording() {
+  mediaRecoder?.stop()
+  isRecording.value = false
+}
 
 /**
  * 关闭媒体流
@@ -63,6 +138,7 @@ function closeStream() {
  * 断开连接并清理资源
  */
 function disconnect() {
+  stopRecording()
   clearInterval(stateJobId)
   clearInterval(watchDogJonId)
   logInfo.value.logs.push({
@@ -256,6 +332,10 @@ onMounted(() => {
   if (!cameraId.value) {
     cameraId.value = ''
   }
+  const recordMimeTypes = getRecordMimeTypes()
+  if (recordMimeTypes.length > 0) {
+    recordSetting.value.mimeType = recordMimeTypes[0]
+  }
 })
 
 onUnmounted(() => {
@@ -271,8 +351,9 @@ onUnmounted(() => {
           <UInput
             :type="isShowConnectId ? 'text' : 'password'"
             v-model="cameraId"
-            :disabled="isConnecting"
+            :disabled="isConnecting || logInfo.state === 'connected'"
             :ui="{ icon: { trailing: { pointer: '' } } }"
+            size="lg"
           >
             <template #trailing>
               <UButton
@@ -317,6 +398,40 @@ onUnmounted(() => {
             >{{ $t('btn.disconnect') }}</UButton
           >
         </div>
+
+        <UDivider class="my-8" :label="$t('label.record')" />
+
+        <div class="flex flex-row items-center">
+          <span>
+            {{ recordingStartTime === 0 ? '00:00:00' : recordingTimeStr }}
+          </span>
+
+          <span class="ml-2">{{ humanFileSize(recordSize) }}</span>
+
+          <div class="flex-1"></div>
+
+          <UButton
+            variant="ghost"
+            color="gray"
+            square
+            class="mr-2"
+            :disabled="isRecording"
+            @click="() => (isRecordSettingModalOpen = true)"
+            ><template #leading><Icon name="solar:settings-linear" /></template
+          ></UButton>
+
+          <UButton color="green" @click="startRecording" v-if="!isRecording"
+            ><template #leading><icon name="solar:play-linear" /></template
+            >{{ $t('btn.startRec') }}</UButton
+          >
+          <UButton color="rose" @click="stopRecording" v-else
+            ><template #leading><Icon name="solar:stop-linear" /></template
+            >{{ $t('btn.stopRec') }}</UButton
+          >
+        </div>
+        <div v-show="!isModernFileAPIAvailable()" class="text-xs">
+          <span class="text-red-500">*</span>{{ $t('hint.recHint') }}
+        </div>
       </div>
 
       <div class="md:flex-1 md:p-4 mt-8 md:mt-0">
@@ -325,5 +440,23 @@ onUnmounted(() => {
     </div>
 
     <LogBar :logInfo="logInfo" />
+
+    <UModal v-model="isRecordSettingModalOpen">
+      <UCard :ui="{ ring: '', divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+        <template #header>
+          <div>{{ $t('label.recordSettings') }}</div>
+        </template>
+
+        <div class="space-y-4">
+          <UFormGroup :label="$t('label.format')">
+            <USelectMenu :options="getRecordMimeTypes()" v-model="recordSetting.mimeType" />
+          </UFormGroup>
+
+          <!-- <UFormGroup :label="$t('label.bps')">
+            <UInput type="number" v-model="recordSetting.bitsPerSecond" />
+          </UFormGroup> -->
+        </div>
+      </UCard>
+    </UModal>
   </div>
 </template>

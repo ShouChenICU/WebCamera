@@ -30,6 +30,26 @@ export function formatDateTime(date, format) {
   return format
 }
 
+/**
+ * 将毫秒数格式化为 HH:mm:ss
+ * @param {number} milliseconds
+ * @returns
+ */
+export function formatTime(milliseconds) {
+  // 计算小时数
+  const hours = Math.floor(milliseconds / (1000 * 60 * 60))
+  // 计算剩余的分钟数
+  const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60))
+  // 计算剩余的秒数
+  const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000)
+
+  // 格式化分钟和秒数为两位数
+  const formattedMinutes = minutes.toString().padStart(2, '0')
+  const formattedSeconds = seconds.toString().padStart(2, '0')
+
+  return `${hours}:${formattedMinutes}:${formattedSeconds}`
+}
+
 export function currentTime(format) {
   if (format === undefined) {
     format = 'yyyy/MM/dd HH:mm:ss'

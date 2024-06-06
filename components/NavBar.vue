@@ -32,9 +32,13 @@ onMounted(() => {
     ref="navElm"
     class="fixed top-0 right-0 left-0 flex flex-row items-center px-4 md:px-6 py-3 z-50"
   >
-    <NuxtLink :to="locatePath('/')" class="contents"
-      ><img src="/favicon.webp" alt="web camera" class="size-6 mr-2" />WebCamera</NuxtLink
-    >
+    <NuxtLink :to="locatePath('/')" class="contents">
+      <img src="/favicon.webp" alt="web camera" class="size-6 mr-2" />
+      <div>
+        <span>WebCamera</span>
+        <span class="ml-2 text-xs">v0.1.1</span>
+      </div>
+    </NuxtLink>
 
     <div class="flex-1"></div>
 
@@ -47,6 +51,7 @@ onMounted(() => {
         size="xl"
         square
         to="https://github.com/ShouChenICU/WebCamera"
+        target="_blank"
       >
         <template #leading>
           <Icon name="mdi:github" />

@@ -34,7 +34,11 @@ export default defineI18nConfig(() => ({
         webRec: 'Web recording',
         connectionID: 'Connection ID',
         audioDev: 'Audio device',
-        videoDev: 'Video device'
+        videoDev: 'Video device',
+        record: 'Record',
+        recordSettings: 'Record settings',
+        format: 'Format',
+        bps: 'Bitrate'
       },
       btn: {
         myFav: 'My Favorites',
@@ -71,7 +75,17 @@ export default defineI18nConfig(() => ({
         t3: 'Privacy & Security',
         d3: 'WebRTC incorporates built-in encryption to secure the communication content'
       },
-      hint: {}
+      usage: {
+        usage: 'Usage',
+        step1:
+          'First, connect the camera. Go to the `Camera` page on the device to be used as a camera, enter the connection ID, and click connect.',
+        step2:
+          'On the monitoring side, go to the `Monitor` page, enter the same connection ID as the camera, and click connect to connect to the corresponding camera.'
+      },
+      hint: {
+        recHint:
+          'The current browser does not support the file access api, limiting the recording time to 10 minutes'
+      }
     },
     zh: {
       welcome: '基于WebRTC的点对点网络摄像头实时监控工具',
@@ -104,7 +118,11 @@ export default defineI18nConfig(() => ({
         webRec: '网页录音',
         connectionID: '连接ID',
         audioDev: '音频设备',
-        videoDev: '视频设备'
+        videoDev: '视频设备',
+        record: '录制',
+        recordSettings: '录制设置',
+        format: '格式',
+        bps: '比特率'
       },
       btn: {
         myFav: '我的收藏',
@@ -141,7 +159,14 @@ export default defineI18nConfig(() => ({
         t3: '隐私安全',
         d3: 'WebRTC内置了加密技术，保护了通信内容的安全'
       },
-      hint: {}
+      usage: {
+        usage: '使用方法',
+        step1: '先连接摄像头，将作为摄像头的设备进入`摄像头`页面，输入连接ID，点连接。',
+        step2: '监控端进入`监控`页面，填入与摄像头相同的连接ID，点连接，即可连到对应的摄像头'
+      },
+      hint: {
+        recHint: '当前浏览器不支持文件访问API，限制录制时长10分钟'
+      }
     }
   }
 }))
