@@ -44,6 +44,8 @@ const rtcNode = shallowRef<RTCNode>()
 let stateJobId: any
 let watchDogJonId: any
 
+const isModernFileAPISupport = ref(false)
+
 const isRecordSettingModalOpen = ref(false)
 const isRecording = ref(false)
 const recordingStartTime = ref(0)
@@ -336,6 +338,7 @@ onMounted(() => {
   if (recordMimeTypes.length > 0) {
     recordSetting.value.mimeType = recordMimeTypes[0]
   }
+  isModernFileAPISupport.value = isModernFileAPIAvailable()
 })
 
 onUnmounted(() => {
@@ -429,7 +432,7 @@ onUnmounted(() => {
             >{{ $t('btn.stopRec') }}</UButton
           >
         </div>
-        <div v-show="!isModernFileAPIAvailable()" class="text-xs">
+        <div v-show="!isModernFileAPISupport" class="text-xs">
           <span class="text-red-500">*</span>{{ $t('hint.recHint') }}
         </div>
       </div>
