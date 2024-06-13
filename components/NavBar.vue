@@ -36,7 +36,7 @@ onMounted(() => {
       <img src="/favicon.webp" alt="web camera" class="size-6 mr-2" />
       <div>
         <span>WebCamera</span>
-        <span class="ml-2 text-xs">v0.1.2</span>
+        <span class="ml-2 text-xs">v0.1.3</span>
       </div>
     </NuxtLink>
 
