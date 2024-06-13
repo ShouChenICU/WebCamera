@@ -6,7 +6,7 @@
 
 ![WebCamera](./public/ogImg.webp)
 
-WebCamera 是一个基于 WebRTC 技术的网络摄像头工具站，使用 Nuxt.js 框架开发，并通过 Yarn 进行包管理。
+WebCamera 是一个基于 WebRTC 技术的网络摄像头监控工具，使用 Nuxt.js 框架开发。
 
 ## 目录
 
@@ -93,3 +93,13 @@ docker run -d -p 3000:3000 webcamera
 ## 许可证
 
 该项目基于 MIT 许可证，详细信息请参阅 [LICENSE](./LICENSE) 文件。
+
+---
+
+<a href="https://star-history.com/#ShouChenICU/WebCamera&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ShouChenICU/WebCamera&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ShouChenICU/WebCamera&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ShouChenICU/WebCamera&type=Date" />
+ </picture>
+</a>
