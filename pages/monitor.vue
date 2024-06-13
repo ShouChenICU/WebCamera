@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { RTCNode } from '#imports'
-import type { _1 } from '#tailwind-config/theme/aspectRatio'
 import { SSE } from 'sse.js'
 
 const { t } = useI18n()
@@ -42,7 +41,7 @@ const sse = shallowRef<SSE>()
 const rtcNode = shallowRef<RTCNode>()
 
 let stateJobId: any
-let watchDogJonId: any
+let watchDogJobId: any
 
 const isModernFileAPISupport = ref(false)
 
@@ -75,11 +74,18 @@ async function startRecording() {
   recordSize.value = 0
   videoChunks = []
   if (isModernFileAPIAvailable()) {
-    // 支持现代化文件访问，数据直接写入磁盘
-    fileHandler = await showSaveFilePicker({
-      startIn: 'downloads',
-      suggestedName: 'Video_' + formatDateTime(new Date(), 'yyyyMMddHHmmss') + '.webm'
-    })
+    try {
+      // 支持现代化文件访问，数据直接写入磁盘
+      fileHandler = await showSaveFilePicker({
+        startIn: 'downloads',
+        suggestedName: 'Video_' + formatDateTime(new Date(), 'yyyyMMddHHmmss') + '.webm'
+      })
+    } catch (e) {
+      console.warn(e)
+      recordingStartTime.value = 0
+      isRecording.value = false
+      return
+    }
     const writer = await fileHandler.createWritable()
 
     mediaRecoder = new MediaRecorder(curStream.value, { mimeType: recordSetting.value.mimeType })
@@ -142,7 +148,7 @@ function closeStream() {
 function disconnect() {
   stopRecording()
   clearInterval(stateJobId)
-  clearInterval(watchDogJonId)
+  clearInterval(watchDogJobId)
   logInfo.value.logs.push({
     time: toISOStringWithTimezone(new Date()),
     type: 'info',
@@ -311,7 +317,7 @@ function doConnect() {
   connectSignServer()
 
   // 超时检测
-  watchDogJonId = setTimeout(() => {
+  watchDogJobId = setTimeout(() => {
     if (isConnecting.value) {
       logInfo.value.logs.push({
         time: toISOStringWithTimezone(new Date()),

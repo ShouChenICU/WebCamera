@@ -6,7 +6,7 @@ export const sseMap = new TTLCache<string, any>({
   ttl: 600e3,
   dispose: (val, key) => {
     try {
-      console.log(toISOStringWithTimezone(new Date()) + ' dispose: ' + key)
+      console.log(toISOStringWithTimezone(new Date()) + ' dispose: ' + key.substring(0, 6) + '...')
       val.close()
     } catch (e) {
       console.warn(e)

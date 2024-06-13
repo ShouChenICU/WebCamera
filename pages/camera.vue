@@ -12,10 +12,17 @@ const curStream = ref<MediaStream>()
 // 当前音视频设备
 const curVideoDevInfo = ref({ id: undefined, label: undefined })
 const curAudioDevInfo = ref({ id: undefined, label: undefined })
+const curResolution = ref('4K_priority')
 
 // 可选音视频设备
 const videoDevList = ref<Array<any>>([])
 const audioDevList = ref<Array<any>>([])
+const resolutionList = ref<Array<any>>([
+  '4K_priority',
+  '2K_priority',
+  '1080P_priority',
+  '720P_priority'
+])
 
 const isOpenAudio = ref(true)
 
@@ -261,8 +268,31 @@ function closeStream() {
 async function refreshStream() {
   closeStream()
   try {
+    // 解析分辨率
+    let idealWidth = 3840
+    let idealHeight = 2160
+    if (curResolution.value === '2K_priority') {
+      idealWidth = 2560
+      idealHeight = 1440
+    } else if (curResolution.value === '1080P_priority') {
+      idealWidth = 1920
+      idealHeight = 1080
+    } else if (curResolution.value === '720P_priority') {
+      idealWidth = 1280
+      idealHeight = 720
+    }
+    // 如果是移动端，则翻转宽高
+    // if (window.innerHeight > window.innerWidth) {
+    //   const tmp = idealWidth
+    //   idealWidth = idealHeight
+    //   idealHeight = tmp
+    // }
     curStream.value = await navigator?.mediaDevices?.getUserMedia({
-      video: { deviceId: curVideoDevInfo.value.id },
+      video: {
+        deviceId: curVideoDevInfo.value.id,
+        width: { ideal: idealWidth },
+        height: { ideal: idealHeight }
+      },
       audio: isOpenAudio.value ? { deviceId: curAudioDevInfo.value.id } : false
     })
     if (!curStream.value) {
@@ -290,6 +320,7 @@ async function refreshStream() {
       })
       localStorage.setItem('audioDev', JSON.stringify(curAudioDevInfo.value))
     }
+    localStorage.setItem('videoResolution', curResolution.value)
     videoElm.value.srcObject = curStream.value
   } catch (e) {
     logInfo.value.logs.push({
@@ -328,6 +359,10 @@ onMounted(async () => {
   if (tmpDev) {
     curAudioDevInfo.value = JSON.parse(tmpDev)
   }
+  let tmpResolution = localStorage.getItem('videoResolution')
+  if (tmpResolution) {
+    curResolution.value = tmpResolution
+  }
 
   // 更新媒体流
   if (!(await refreshStream())) {
@@ -364,6 +399,7 @@ onMounted(async () => {
 
   watch(curAudioDevInfo, refreshStream)
   watch(curVideoDevInfo, refreshStream)
+  watch(curResolution, refreshStream)
   watch(isOpenAudio, refreshStream)
 
   // 获取上次使用的连接ID
@@ -399,15 +435,27 @@ onUnmounted(() => {
   <div class="bg-neutral-50 dark:bg-black" :style="{ 'padding-top': navHeight + 'px' }">
     <div class="overflow-y-auto md:flex md:flex-row p-4">
       <div class="md:flex-1 md:p-4 space-y-4">
+        <!-- 选择视频设备 -->
         <UFormGroup :label="$t('label.videoDev')">
           <USelectMenu :options="videoDevList" v-model="curVideoDevInfo" :disabled="isConnecting" />
         </UFormGroup>
+
+        <UFormGroup :label="$t('label.resolution')">
+          <USelectMenu :options="resolutionList" v-model="curResolution" :disabled="isConnecting">
+            <template #label>{{ $t('label.' + curResolution) }}</template>
+            <template #option="opt">{{ $t('label.' + opt.option) }}</template>
+          </USelectMenu>
+        </UFormGroup>
+
+        <!-- 选择音频设备 -->
         <UFormGroup :label="$t('label.audioDev')">
           <USelectMenu
             :options="audioDevList"
             v-model="curAudioDevInfo"
             :disabled="!isOpenAudio || isConnecting"
           />
+
+          <!-- 是否启用音频 -->
         </UFormGroup>
         <div class="flex flex-row items-center justify-end gap-4 text-sm">
           <label class="contents">
@@ -416,6 +464,7 @@ onUnmounted(() => {
           </label>
         </div>
 
+        <!-- 连接ID -->
         <UFormGroup :label="$t('label.connectionID')">
           <UInput
             :type="isShowConnectId ? 'text' : 'password'"
